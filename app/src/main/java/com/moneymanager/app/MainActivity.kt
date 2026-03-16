@@ -62,7 +62,10 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    AppNavigation(navController = navController)
+                    AppNavigation(
+                        navController = navController,
+                        modifier = Modifier.padding(innerPadding)
+                    )
                 }
             }
         }

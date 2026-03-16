@@ -70,7 +70,12 @@ class DashboardViewModel @Inject constructor(
                     isLoading = false
                 )
             }.collect { newState ->
-                _state.value = newState
+                _state.update { current ->
+                    newState.copy(
+                        isSyncing = current.isSyncing,
+                        syncMessage = current.syncMessage
+                    )
+                }
             }
         }
     }

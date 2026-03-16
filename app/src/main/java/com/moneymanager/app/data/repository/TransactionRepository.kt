@@ -10,6 +10,7 @@ import com.moneymanager.app.data.sms.SmsReader
 import com.moneymanager.app.data.sms.SmsParser
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import java.io.File
 import java.io.FileWriter
 import java.text.SimpleDateFormat
@@ -76,10 +77,7 @@ class TransactionRepository @Inject constructor(
     }
 
     suspend fun exportToCsv(): File {
-        val transactions = mutableListOf<Transaction>()
-        transactionDao.getAllTransactions().collect { list ->
-            transactions.addAll(list)
-        }
+        val transactions = transactionDao.getAllTransactions().first()
 
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val fileName = "transactions_${System.currentTimeMillis()}.csv"

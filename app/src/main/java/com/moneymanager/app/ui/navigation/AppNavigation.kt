@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -26,8 +27,8 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 }
 
 @Composable
-fun AppNavigation(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = Screen.Dashboard.route) {
+fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifier) {
+    NavHost(navController = navController, startDestination = Screen.Dashboard.route, modifier = modifier) {
         composable(Screen.Dashboard.route) {
             DashboardScreen(navController = navController)
         }

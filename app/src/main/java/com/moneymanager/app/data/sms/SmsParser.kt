@@ -16,19 +16,19 @@ data class ParsedSms(
 object SmsParser {
 
     private val debitPatterns = listOf(
-        Pattern.compile("(?i)debited.*?(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("(?i)(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*).*?(?:debited|deducted|spent|paid)", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("(?i)spent\\s+(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("(?i)payment.*?(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("(?i)withdrawn.*?(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)", Pattern.CASE_INSENSITIVE)
+        Pattern.compile("(?i)debited.*?(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)"),
+        Pattern.compile("(?i)(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*).*?(?:debited|deducted|spent|paid)"),
+        Pattern.compile("(?i)spent\\s+(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)"),
+        Pattern.compile("(?i)payment.*?(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)"),
+        Pattern.compile("(?i)withdrawn.*?(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)")
     )
 
     private val creditPatterns = listOf(
-        Pattern.compile("(?i)credited.*?(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("(?i)(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*).*?credited", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("(?i)received.*?(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("(?i)salary.*?(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("(?i)(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*).*?received", Pattern.CASE_INSENSITIVE)
+        Pattern.compile("(?i)credited.*?(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)"),
+        Pattern.compile("(?i)(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*).*?credited"),
+        Pattern.compile("(?i)received.*?(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)"),
+        Pattern.compile("(?i)salary.*?(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*)"),
+        Pattern.compile("(?i)(?:Rs\\.?|INR|\\$)\\s*([\\d,]+\\.?\\d*).*?received")
     )
 
     private val accountPattern = Pattern.compile("(?i)(?:a/c|account|acct)\\s*(?:no\\.?|number)?\\s*[xX*]+([\\dA-Za-z]{4})")
