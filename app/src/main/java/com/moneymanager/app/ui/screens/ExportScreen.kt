@@ -55,13 +55,18 @@ fun ExportScreen(
         ) {
             if (state.exportMessage.isNotEmpty()) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (state.isExportError) MaterialTheme.colorScheme.errorContainer
+                                         else MaterialTheme.colorScheme.secondaryContainer
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         state.exportMessage,
                         modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (state.isExportError) MaterialTheme.colorScheme.onErrorContainer
+                                else MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }
