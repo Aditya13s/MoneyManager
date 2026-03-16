@@ -141,7 +141,17 @@ class TransactionViewModel @Inject constructor(
             if (state.isNew) {
                 repository.insertTransaction(transaction)
             } else {
-                repository.updateTransaction(transaction)
+                val existing = repository.getTransactionById(state.id)
+                if (existing != null) {
+                    repository.updateTransaction(
+                        transaction.copy(
+                            notionPageId = existing.notionPageId,
+                            isExportedToNotion = existing.isExportedToNotion
+                        )
+                    )
+                } else {
+                    repository.updateTransaction(transaction)
+                }
             }
         }
         return true

@@ -72,7 +72,22 @@ fun ExportScreen(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Notion Export", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Export transactions to a Notion database. You need a Notion API key and database ID.",
+                        "Export transactions to a Notion database. Follow these steps to set up Notion integration:",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "1. Go to https://www.notion.so/my-integrations and click \"New integration\".\n" +
+                        "2. Give it a name (e.g. MoneyManager), select your workspace, and click Submit.\n" +
+                        "3. Copy the \"Internal Integration Token\" — this is your API Key.\n" +
+                        "4. In Notion, create a new database with these columns:\n" +
+                        "   • Name (Title)\n" +
+                        "   • Amount (Number)\n" +
+                        "   • Type (Select: INCOME, EXPENSE, TRANSFER)\n" +
+                        "   • Category (Select)\n" +
+                        "   • Date (Date)\n" +
+                        "5. Open the database, click \"...\" → \"Connections\" and add your integration.\n" +
+                        "6. Copy the database ID from its URL:\n" +
+                        "   notion.so/<workspace>/<DATABASE_ID>?v=...",
                         style = MaterialTheme.typography.bodySmall
                     )
                     OutlinedTextField(

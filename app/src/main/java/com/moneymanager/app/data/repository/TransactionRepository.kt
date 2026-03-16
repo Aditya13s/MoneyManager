@@ -234,6 +234,16 @@ class TransactionRepository @Inject constructor(
                         transaction.copy(notionPageId = pageId, isExportedToNotion = true)
                     )
                     exportedCount++
+                } else {
+                    val errorBody = response.errorBody()?.string()?.take(300) ?: ""
+                    val message = when (response.code()) {
+                        400 -> "Bad request — check your database ID and column names (${response.code()})"
+                        401 -> "Unauthorized — verify your Notion API key (${response.code()})"
+                        403 -> "Forbidden — make sure your integration is invited to the database (${response.code()})"
+                        404 -> "Database not found — verify the database ID (${response.code()})"
+                        else -> "Notion API error ${response.code()}: $errorBody"
+                    }
+                    throw Exception(message)
                 }
             }
             Result.success(exportedCount)
