@@ -60,8 +60,8 @@ class SmsReader @Inject constructor(
                     }
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
+            // SMS content provider not available or permission not granted
         }
 
         return messages
