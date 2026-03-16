@@ -1,5 +1,6 @@
 package com.moneymanager.app.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moneymanager.app.data.db.entities.Transaction
@@ -80,20 +81,17 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    fun syncSmsTransactions() {
+    fun importCsvTransactions(uri: Uri) {
         viewModelScope.launch {
-            _state.update { it.copy(isSyncing = true, syncMessage = "Syncing SMS transactions...") }
+            _state.update { it.copy(isSyncing = true, syncMessage = "Importing transactions…") }
             try {
-                val count = repository.syncSmsTransactions()
-                _state.update { it.copy(isSyncing = false, syncMessage = "Synced $count new transactions") }
+                val count = repository.importFromCsv(uri)
+                val message = if (count > 0) "Imported $count transaction(s)" else "No transactions found in file"
+                _state.update { it.copy(isSyncing = false, syncMessage = message) }
             } catch (e: Exception) {
-                _state.update { it.copy(isSyncing = false, syncMessage = "Sync failed: ${e.message}") }
+                _state.update { it.copy(isSyncing = false, syncMessage = "Import failed: ${e.message}") }
             }
         }
-    }
-
-    fun onSmsSyncPermissionDenied() {
-        _state.update { it.copy(syncMessage = "SMS permission is required to sync transactions") }
     }
 
     private fun getStartOfMonth(): Long {

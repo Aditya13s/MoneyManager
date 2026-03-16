@@ -1,9 +1,11 @@
 package com.moneymanager.app.data.repository
 
 import android.content.Context
+import android.net.Uri
 import com.google.gson.JsonObject
 import com.moneymanager.app.data.db.TransactionDao
 import com.moneymanager.app.data.db.entities.Transaction
+import com.moneymanager.app.data.db.entities.TransactionCategory
 import com.moneymanager.app.data.db.entities.TransactionType
 import com.moneymanager.app.data.network.NotionApiService
 import com.moneymanager.app.data.sms.SmsReader
@@ -11,8 +13,10 @@ import com.moneymanager.app.data.sms.SmsParser
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import java.io.BufferedReader
 import java.io.File
 import java.io.FileWriter
+import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
@@ -74,6 +78,123 @@ class TransactionRepository @Inject constructor(
             }
         }
         return newCount
+    }
+
+    suspend fun importFromCsv(uri: Uri): Int {
+        val transactions = mutableListOf<Transaction>()
+        val dateFormats = listOf(
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()),
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()),
+            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()),
+            SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+        )
+
+        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            BufferedReader(InputStreamReader(inputStream)).use { reader ->
+                val headerLine = reader.readLine() ?: return 0
+                val headers = parseCsvLine(headerLine).map { it.trim().lowercase() }
+
+                val idxTitle    = headers.indexOf("title").takeIf { it >= 0 }
+                    ?: headers.indexOfFirst { it.contains("description") || it.contains("narration") || it.contains("particulars") }
+                val idxAmount   = headers.indexOfFirst { it == "amount" || it.contains("amount") || it.contains("debit") || it.contains("credit") }
+                val idxType     = headers.indexOf("type").takeIf { it >= 0 }
+                val idxCategory = headers.indexOf("category").takeIf { it >= 0 }
+                val idxDate     = headers.indexOfFirst { it == "date" || it.contains("date") || it.contains("time") }
+                val idxAccount  = headers.indexOf("account").takeIf { it >= 0 }
+                val idxNote     = headers.indexOf("note").takeIf { it >= 0 }
+
+                if (idxAmount < 0) throw IllegalArgumentException("CSV must contain an amount column")
+
+                reader.lineSequence().forEach { rawLine ->
+                    val line = rawLine.trim()
+                    if (line.isBlank()) return@forEach
+                    val cols = parseCsvLine(line)
+                    if (cols.size <= idxAmount) return@forEach
+
+                    val amountStr = cols.getOrNull(idxAmount)?.trim() ?: return@forEach
+                    val amount = amountStr.replace("[^0-9.-]".toRegex(), "").toDoubleOrNull() ?: return@forEach
+                    if (amount == 0.0) return@forEach
+
+                    val title = cols.getOrNull(idxTitle ?: -1)?.trim()?.ifBlank { "Imported" } ?: "Imported"
+                    val typeStr = cols.getOrNull(idxType ?: -1)?.trim()?.uppercase() ?: ""
+                    val type = when {
+                        typeStr.contains("INCOME") || typeStr.contains("CREDIT") -> TransactionType.INCOME
+                        typeStr.contains("TRANSFER") -> TransactionType.TRANSFER
+                        else -> TransactionType.EXPENSE
+                    }
+                    val categoryStr = cols.getOrNull(idxCategory ?: -1)?.trim()?.uppercase() ?: ""
+                    val category = parseCsvCategory(categoryStr)
+
+                    val dateStr = cols.getOrNull(idxDate ?: -1)?.trim() ?: ""
+                    val date = dateFormats.firstNotNullOfOrNull { fmt ->
+                        runCatching { fmt.parse(dateStr)?.time }.getOrNull()
+                    } ?: System.currentTimeMillis()
+
+                    val account = cols.getOrNull(idxAccount ?: -1)?.trim() ?: ""
+                    val note = cols.getOrNull(idxNote ?: -1)?.trim() ?: ""
+
+                    transactions.add(
+                        Transaction(
+                            title = title,
+                            amount = kotlin.math.abs(amount),
+                            type = type,
+                            category = category,
+                            account = account,
+                            date = date,
+                            note = note
+                        )
+                    )
+                }
+            }
+        }
+
+        if (transactions.isNotEmpty()) {
+            transactionDao.insertTransactions(transactions)
+        }
+        return transactions.size
+    }
+
+    private fun parseCsvCategory(value: String): TransactionCategory {
+        if (value.isBlank()) return TransactionCategory.OTHER
+        runCatching { TransactionCategory.valueOf(value) }.getOrNull()?.let { return it }
+        return when {
+            value.contains("FOOD") || value.contains("DINE") || value.contains("RESTAURANT") || value.contains("GROCERY") -> TransactionCategory.FOOD
+            value.contains("TRANSPORT") || value.contains("TRAVEL") || value.contains("CAB") || value.contains("FUEL") -> TransactionCategory.TRANSPORT
+            value.contains("SHOP") || value.contains("RETAIL") || value.contains("PURCHASE") -> TransactionCategory.SHOPPING
+            value.contains("ENTERTAIN") || value.contains("MOVIE") || value.contains("SUBSCRI") -> TransactionCategory.ENTERTAINMENT
+            value.contains("HEALTH") || value.contains("MEDICAL") || value.contains("PHARMA") -> TransactionCategory.HEALTH
+            value.contains("UTIL") || value.contains("ELECTRIC") || value.contains("WATER") || value.contains("BILL") -> TransactionCategory.UTILITIES
+            value.contains("RENT") || value.contains("HOUSE") -> TransactionCategory.RENT
+            value.contains("SALARY") || value.contains("PAYROLL") -> TransactionCategory.SALARY
+            value.contains("TRANSFER") -> TransactionCategory.TRANSFER
+            else -> TransactionCategory.OTHER
+        }
+    }
+
+    private fun parseCsvLine(line: String): List<String> {
+        val result = mutableListOf<String>()
+        val current = StringBuilder()
+        var inQuotes = false
+        var i = 0
+        while (i < line.length) {
+            val c = line[i]
+            when {
+                c == '"' && !inQuotes -> inQuotes = true
+                c == '"' && inQuotes && i + 1 < line.length && line[i + 1] == '"' -> {
+                    current.append('"')
+                    i++
+                }
+                c == '"' && inQuotes -> inQuotes = false
+                c == ',' && !inQuotes -> {
+                    result.add(current.toString())
+                    current.clear()
+                }
+                else -> current.append(c)
+            }
+            i++
+        }
+        result.add(current.toString())
+        return result
     }
 
     suspend fun exportToCsv(): File {
