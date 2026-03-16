@@ -1,5 +1,9 @@
 package com.moneymanager.app.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,9 +17,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.moneymanager.app.data.db.entities.Transaction
@@ -36,13 +42,33 @@ fun DashboardScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
+    val context = LocalContext.current
+
+    val smsPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.syncSmsTransactions()
+        } else {
+            viewModel.onSmsSyncPermissionDenied()
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Money Manager", fontWeight = FontWeight.Bold) },
                 actions = {
-                    IconButton(onClick = { viewModel.syncSmsTransactions() }) {
+                    IconButton(onClick = {
+                        val hasPermission = ContextCompat.checkSelfPermission(
+                            context, Manifest.permission.READ_SMS
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (hasPermission) {
+                            viewModel.syncSmsTransactions()
+                        } else {
+                            smsPermissionLauncher.launch(Manifest.permission.READ_SMS)
+                        }
+                    }) {
                         Icon(Icons.Default.Refresh, "Sync SMS")
                     }
                 }

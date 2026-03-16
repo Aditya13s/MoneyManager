@@ -92,6 +92,10 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    fun onSmsSyncPermissionDenied() {
+        _state.update { it.copy(syncMessage = "SMS permission is required to sync transactions") }
+    }
+
     private fun getStartOfMonth(): Long {
         return Calendar.getInstance().apply {
             set(Calendar.DAY_OF_MONTH, 1)
