@@ -55,12 +55,7 @@ class MainActivity : ComponentActivity() {
                     val currentRoute = navBackStackEntry?.destination?.route
 
                     // Hide bottom nav on full-screen / detail routes
-                    val fullScreenRoutes = setOf(
-                        Screen.Onboarding.route,
-                        Screen.Settings.route,
-                        Screen.TransactionDetail.route
-                    )
-                    val showBottomBar = currentRoute !in fullScreenRoutes &&
+                    val showBottomBar = currentRoute !in setOf(Screen.Onboarding.route, Screen.Settings.route) &&
                         !currentRoute.orEmpty().startsWith("transaction/")
 
                     data class NavItem(val screen: Screen, val icon: ImageVector, val label: String)

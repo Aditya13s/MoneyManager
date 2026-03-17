@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Upload
@@ -48,13 +47,48 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
-private val MORSE_CHARS = listOf('·', '−')
+// Horizontal lines (wide): ─ ━ ═
+// Horizontal lines (short): ╌ ╍ ┄ ┅
+// Vertical lines: │ ┃ ╎ ╏ ┆ ┇
+// Dot: ·
+// Mixed together so the mask looks like a random grid of crossing strokes
+private val MORSE_H   = listOf('─', '━', '═', '╌', '╍', '┄', '┅') // horizontal
+private val MORSE_V   = listOf('│', '┃', '╎', '╏', '┆', '┇')       // vertical
+private val MORSE_DOT = listOf('·', '•')                              // dot
 
-/** Generates a pseudo-random Morse-style mask seeded on the amount value so it is stable per amount. */
+// Cache masks so the same amount always renders identically across recompositions,
+// and we never allocate a new Random on recompose.
+private val morseMaskCache = java.util.Collections.synchronizedMap(
+    LinkedHashMap<Long, String>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: Map.Entry<Long, String>) = size > 128
+    }
+)
+
+/**
+ * Generates a pseudo-random privacy mask seeded on the raw bits of [amount].
+ * Each mask is a random sequence of horizontal lines (─ ━ ═ …), vertical lines (│ ┃ ╎ …)
+ * and dots (· •), giving a non-linear, non-symmetric appearance per amount.
+ * Length varies between 5 and 9 symbols with optional thin-space gaps for rhythm.
+ */
 private fun morseHide(amount: Double): String {
-    val rng = java.util.Random(amount.toBits())
-    val len = 5 + rng.nextInt(4) // 5–8 chars
-    return (1..len).map { MORSE_CHARS[rng.nextInt(2)] }.joinToString("")
+    val key = amount.toBits()
+    return morseMaskCache.getOrPut(key) {
+        val rng = java.util.Random(key)
+        val len = 5 + rng.nextInt(5) // 5–9 symbols
+        val sb = StringBuilder()
+        repeat(len) {
+            // Bias toward horizontal lines (they look wider and balance vertical ones)
+            val pool = when (rng.nextInt(10)) {
+                in 0..4 -> MORSE_H   // 50 % horizontal
+                in 5..7 -> MORSE_V   // 30 % vertical
+                else    -> MORSE_DOT // 20 % dot
+            }
+            sb.append(pool[rng.nextInt(pool.size)])
+            // Randomly insert a thin-space to break up regularity
+            if (rng.nextBoolean()) sb.append('\u2009')
+        }
+        sb.toString().trim()
+    }
 }
 
 private fun formatAmount(amount: Double, hidden: Boolean, format: NumberFormat): String =
