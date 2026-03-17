@@ -58,11 +58,13 @@ private val MORSE_DOT = listOf('·', '•')                              // dot
 
 // Cache masks so the same amount always renders identically across recompositions,
 // and we never allocate a new Random on recompose.
-private val morseMaskCache = java.util.Collections.synchronizedMap(
-    LinkedHashMap<Long, String>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: Map.Entry<Long, String>) = size > 128
-    }
-)
+// The explicit type annotation is required for Kotlin to infer the anonymous subclass correctly.
+private val morseMaskCache: MutableMap<Long, String> =
+    java.util.Collections.synchronizedMap(
+        object : LinkedHashMap<Long, String>(64, 0.75f, true) {
+            override fun removeEldestEntry(eldest: Map.Entry<Long, String>) = size > 128
+        }
+    )
 
 /**
  * Generates a pseudo-random privacy mask seeded on the raw bits of [amount].
