@@ -9,12 +9,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,6 +33,11 @@ import com.moneymanager.app.viewmodel.DashboardViewModel
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
+
+private const val HIDDEN_AMOUNT = "••••••"
+
+private fun formatAmount(amount: Double, hidden: Boolean, format: NumberFormat): String =
+    if (hidden) HIDDEN_AMOUNT else format.format(amount)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +59,17 @@ fun DashboardScreen(
             TopAppBar(
                 title = { Text("Money Manager", fontWeight = FontWeight.Bold) },
                 actions = {
+                    IconButton(
+                        onClick = { viewModel.toggleAmountsHidden() },
+                        modifier = Modifier.semantics {
+                            contentDescription = if (state.amountsHidden) "Show amounts" else "Hide amounts"
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (state.amountsHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = null
+                        )
+                    }
                     IconButton(onClick = { csvImportLauncher.launch("*/*") }) {
                         Icon(Icons.Default.Upload, contentDescription = "Import CSV")
                     }
@@ -80,13 +100,13 @@ fun DashboardScreen(
                 }
             }
 
-            item { SummaryCard(state.totalIncome, state.totalExpense, state.remaining, currencyFormat) }
+            item { SummaryCard(state.totalIncome, state.totalExpense, state.remaining, currencyFormat, state.amountsHidden) }
 
-            item { MonthlyCard(state.monthlyIncome, state.monthlyExpense, currencyFormat) }
+            item { MonthlyCard(state.monthlyIncome, state.monthlyExpense, currencyFormat, state.amountsHidden) }
 
             item {
                 if (state.categoryBreakdown.isNotEmpty()) {
-                    CategoryBreakdownCard(state.categoryBreakdown, currencyFormat)
+                    CategoryBreakdownCard(state.categoryBreakdown, currencyFormat, state.amountsHidden)
                 }
             }
 
@@ -98,6 +118,7 @@ fun DashboardScreen(
                 TransactionCard(
                     transaction = transaction,
                     currencyFormat = currencyFormat,
+                    amountsHidden = state.amountsHidden,
                     onClick = { navController.navigate(Screen.TransactionDetail.createRoute(transaction.id)) }
                 )
             }
@@ -106,7 +127,7 @@ fun DashboardScreen(
 }
 
 @Composable
-fun SummaryCard(income: Double, expense: Double, remaining: Double, format: NumberFormat) {
+fun SummaryCard(income: Double, expense: Double, remaining: Double, format: NumberFormat, amountsHidden: Boolean = false) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -116,20 +137,20 @@ fun SummaryCard(income: Double, expense: Double, remaining: Double, format: Numb
             Text("Overall Balance", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(
-                text = format.format(remaining),
+                text = formatAmount(remaining, amountsHidden, format),
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (remaining >= 0) IncomeColor else ExpenseColor
+                color = if (amountsHidden || remaining >= 0) IncomeColor else ExpenseColor
             )
             Spacer(Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
                     Text("Income", style = MaterialTheme.typography.labelMedium)
-                    Text(format.format(income), color = IncomeColor, fontWeight = FontWeight.SemiBold)
+                    Text(formatAmount(income, amountsHidden, format), color = IncomeColor, fontWeight = FontWeight.SemiBold)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Expenses", style = MaterialTheme.typography.labelMedium)
-                    Text(format.format(expense), color = ExpenseColor, fontWeight = FontWeight.SemiBold)
+                    Text(formatAmount(expense, amountsHidden, format), color = ExpenseColor, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -137,17 +158,20 @@ fun SummaryCard(income: Double, expense: Double, remaining: Double, format: Numb
 }
 
 @Composable
-fun MonthlyCard(monthlyIncome: Double, monthlyExpense: Double, format: NumberFormat) {
+fun MonthlyCard(monthlyIncome: Double, monthlyExpense: Double, format: NumberFormat, amountsHidden: Boolean = false) {
     val monthName = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date())
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("This Month: $monthName", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                SummaryItem("Income", format.format(monthlyIncome), IncomeColor)
-                SummaryItem("Expenses", format.format(monthlyExpense), ExpenseColor)
-                SummaryItem("Saved", format.format(monthlyIncome - monthlyExpense),
-                    if (monthlyIncome >= monthlyExpense) IncomeColor else ExpenseColor)
+                SummaryItem("Income", formatAmount(monthlyIncome, amountsHidden, format), IncomeColor)
+                SummaryItem("Expenses", formatAmount(monthlyExpense, amountsHidden, format), ExpenseColor)
+                SummaryItem(
+                    "Saved",
+                    formatAmount(monthlyIncome - monthlyExpense, amountsHidden, format),
+                    if (amountsHidden || monthlyIncome >= monthlyExpense) IncomeColor else ExpenseColor
+                )
             }
             Spacer(Modifier.height(12.dp))
             if (monthlyIncome > 0) {
@@ -158,7 +182,10 @@ fun MonthlyCard(monthlyIncome: Double, monthlyExpense: Double, format: NumberFor
                     color = if (progress < 0.75f) IncomeColor else ExpenseColor
                 )
                 Spacer(Modifier.height(4.dp))
-                Text("${(progress * 100).toInt()}% of income spent", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    if (amountsHidden) "•••% of income spent" else "${(progress * 100).toInt()}% of income spent",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }
@@ -173,7 +200,7 @@ fun SummaryItem(label: String, value: String, color: Color) {
 }
 
 @Composable
-fun CategoryBreakdownCard(breakdown: Map<String, Double>, format: NumberFormat) {
+fun CategoryBreakdownCard(breakdown: Map<String, Double>, format: NumberFormat, amountsHidden: Boolean = false) {
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Spending by Category", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -186,7 +213,11 @@ fun CategoryBreakdownCard(breakdown: Map<String, Double>, format: NumberFormat) 
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(category, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    Text(format.format(amount), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        formatAmount(amount, amountsHidden, format),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
                 if (total > 0) {
                     val pct = (amount / total).toFloat().coerceIn(0f, 1f)
@@ -203,7 +234,7 @@ fun CategoryBreakdownCard(breakdown: Map<String, Double>, format: NumberFormat) 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, onClick: () -> Unit) {
+fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amountsHidden: Boolean = false, onClick: () -> Unit) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -223,9 +254,14 @@ fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, onCl
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            val amountColor = if (transaction.type == TransactionType.EXPENSE) ExpenseColor else IncomeColor
             Text(
-                text = "${if (transaction.type == TransactionType.EXPENSE) "-" else "+"}${currencyFormat.format(transaction.amount)}",
-                color = if (transaction.type == TransactionType.EXPENSE) ExpenseColor else IncomeColor,
+                text = if (amountsHidden) {
+                    "${if (transaction.type == TransactionType.EXPENSE) "-" else "+"} $HIDDEN_AMOUNT"
+                } else {
+                    "${if (transaction.type == TransactionType.EXPENSE) "-" else "+"}${currencyFormat.format(transaction.amount)}"
+                },
+                color = amountColor,
                 fontWeight = FontWeight.Bold
             )
         }

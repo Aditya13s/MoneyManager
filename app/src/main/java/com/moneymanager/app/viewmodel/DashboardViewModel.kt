@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moneymanager.app.data.db.entities.Transaction
 import com.moneymanager.app.data.repository.TransactionRepository
+import com.moneymanager.app.data.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -21,12 +22,14 @@ data class DashboardState(
     val categoryBreakdown: Map<String, Double> = emptyMap(),
     val isLoading: Boolean = false,
     val isSyncing: Boolean = false,
-    val syncMessage: String = ""
+    val syncMessage: String = "",
+    val amountsHidden: Boolean = false
 )
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val repository: TransactionRepository
+    private val repository: TransactionRepository,
+    private val prefsRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DashboardState())
@@ -34,6 +37,21 @@ class DashboardViewModel @Inject constructor(
 
     init {
         loadDashboardData()
+        observePreferences()
+    }
+
+    private fun observePreferences() {
+        viewModelScope.launch {
+            prefsRepository.amountsHidden.collect { hidden ->
+                _state.update { it.copy(amountsHidden = hidden) }
+            }
+        }
+    }
+
+    fun toggleAmountsHidden() {
+        viewModelScope.launch {
+            prefsRepository.toggleAmountsHidden()
+        }
     }
 
     private fun loadDashboardData() {
@@ -74,7 +92,8 @@ class DashboardViewModel @Inject constructor(
                 _state.update { current ->
                     newState.copy(
                         isSyncing = current.isSyncing,
-                        syncMessage = current.syncMessage
+                        syncMessage = current.syncMessage,
+                        amountsHidden = current.amountsHidden
                     )
                 }
             }
