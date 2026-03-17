@@ -7,10 +7,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -31,7 +35,22 @@ fun TransactionListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Transactions") })
+            TopAppBar(
+                title = { Text("Transactions") },
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.toggleAmountsHidden() },
+                        modifier = Modifier.semantics {
+                            contentDescription = if (state.amountsHidden) "Show amounts" else "Hide amounts"
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (state.amountsHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = null
+                        )
+                    }
+                }
+            )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
@@ -125,6 +144,7 @@ fun TransactionListScreen(
                             TransactionCard(
                                 transaction = transaction,
                                 currencyFormat = currencyFormat,
+                                amountsHidden = state.amountsHidden,
                                 onClick = { navController.navigate(Screen.TransactionDetail.createRoute(transaction.id)) }
                             )
                         }

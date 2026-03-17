@@ -32,6 +32,17 @@ fun ExportScreen(
     var notionDatabaseId by remember { mutableStateOf("") }
     var apiKeyVisible by remember { mutableStateOf(false) }
     var instructionsExpanded by remember { mutableStateOf(false) }
+    var credentialsSaved by remember { mutableStateOf(false) }
+    var hasInitialized by remember { mutableStateOf(false) }
+
+    // Populate fields from saved credentials only on first load
+    LaunchedEffect(state.savedNotionApiKey, state.savedNotionDatabaseId) {
+        if (!hasInitialized && (state.savedNotionApiKey.isNotEmpty() || state.savedNotionDatabaseId.isNotEmpty())) {
+            notionApiKey = state.savedNotionApiKey
+            notionDatabaseId = state.savedNotionDatabaseId
+            hasInitialized = true
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -138,7 +149,10 @@ fun ExportScreen(
 
                     OutlinedTextField(
                         value = notionApiKey,
-                        onValueChange = { notionApiKey = it },
+                        onValueChange = {
+                            notionApiKey = it
+                            credentialsSaved = false
+                        },
                         label = { Text("Notion API Key") },
                         placeholder = { Text("secret_xxxxxxxxxxxx") },
                         modifier = Modifier.fillMaxWidth(),
@@ -158,7 +172,10 @@ fun ExportScreen(
 
                     OutlinedTextField(
                         value = notionDatabaseId,
-                        onValueChange = { notionDatabaseId = it },
+                        onValueChange = {
+                            notionDatabaseId = it
+                            credentialsSaved = false
+                        },
                         label = { Text("Database ID") },
                         placeholder = { Text("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx") },
                         modifier = Modifier.fillMaxWidth(),
@@ -166,12 +183,36 @@ fun ExportScreen(
                         supportingText = { Text("32-character ID from your database URL") }
                     )
 
-                    Button(
-                        onClick = { viewModel.exportToNotion(notionApiKey, notionDatabaseId) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = notionApiKey.isNotBlank() && notionDatabaseId.isNotBlank()
-                    ) {
-                        Text("Export to Notion")
+                    if (credentialsSaved) {
+                        Text(
+                            "✓ Credentials saved",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.saveNotionCredentials(notionApiKey, notionDatabaseId)
+                                credentialsSaved = true
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = notionApiKey.isNotBlank() && notionDatabaseId.isNotBlank()
+                        ) {
+                            Text("Save")
+                        }
+                        Button(
+                            onClick = {
+                                viewModel.saveNotionCredentials(notionApiKey, notionDatabaseId)
+                                credentialsSaved = true
+                                viewModel.exportToNotion(notionApiKey, notionDatabaseId)
+                            },
+                            modifier = Modifier.weight(2f),
+                            enabled = notionApiKey.isNotBlank() && notionDatabaseId.isNotBlank()
+                        ) {
+                            Text("Export to Notion")
+                        }
                     }
                 }
             }

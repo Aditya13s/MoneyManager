@@ -6,6 +6,7 @@ import com.moneymanager.app.data.db.entities.Transaction
 import com.moneymanager.app.data.db.entities.TransactionCategory
 import com.moneymanager.app.data.db.entities.TransactionType
 import com.moneymanager.app.data.repository.TransactionRepository
+import com.moneymanager.app.data.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -17,7 +18,10 @@ data class TransactionListState(
     val searchQuery: String = "",
     val selectedType: TransactionType? = null,
     val exportMessage: String = "",
-    val isExportError: Boolean = false
+    val isExportError: Boolean = false,
+    val amountsHidden: Boolean = false,
+    val savedNotionApiKey: String = "",
+    val savedNotionDatabaseId: String = ""
 )
 
 data class TransactionEditState(
@@ -35,7 +39,8 @@ data class TransactionEditState(
 
 @HiltViewModel
 class TransactionViewModel @Inject constructor(
-    private val repository: TransactionRepository
+    private val repository: TransactionRepository,
+    private val prefsRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _listState = MutableStateFlow(TransactionListState())
@@ -48,6 +53,34 @@ class TransactionViewModel @Inject constructor(
 
     init {
         loadTransactions()
+        observePreferences()
+    }
+
+    private fun observePreferences() {
+        viewModelScope.launch {
+            prefsRepository.amountsHidden.collect { hidden ->
+                _listState.update { it.copy(amountsHidden = hidden) }
+            }
+        }
+        viewModelScope.launch {
+            combine(prefsRepository.notionApiKey, prefsRepository.notionDatabaseId) { key, id ->
+                Pair(key, id)
+            }.collect { (key, id) ->
+                _listState.update { it.copy(savedNotionApiKey = key, savedNotionDatabaseId = id) }
+            }
+        }
+    }
+
+    fun toggleAmountsHidden() {
+        viewModelScope.launch {
+            prefsRepository.toggleAmountsHidden()
+        }
+    }
+
+    fun saveNotionCredentials(apiKey: String, databaseId: String) {
+        viewModelScope.launch {
+            prefsRepository.saveNotionCredentials(apiKey, databaseId)
+        }
     }
 
     private fun loadTransactions() {
