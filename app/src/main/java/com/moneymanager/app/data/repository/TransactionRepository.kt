@@ -9,8 +9,6 @@ import com.moneymanager.app.data.db.entities.Transaction
 import com.moneymanager.app.data.db.entities.TransactionCategory
 import com.moneymanager.app.data.db.entities.TransactionType
 import com.moneymanager.app.data.network.NotionApiService
-import com.moneymanager.app.data.sms.SmsReader
-import com.moneymanager.app.data.sms.SmsParser
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -25,7 +23,6 @@ import javax.inject.Singleton
 @Singleton
 class TransactionRepository @Inject constructor(
     private val transactionDao: TransactionDao,
-    private val smsReader: SmsReader,
     private val notionApiService: NotionApiService,
     @ApplicationContext private val context: Context
 ) {
@@ -64,24 +61,6 @@ class TransactionRepository @Inject constructor(
 
     suspend fun deleteTransactionById(id: Long) =
         transactionDao.deleteTransactionById(id)
-
-    suspend fun syncSmsTransactions(): Int {
-        val smsList = smsReader.readFinancialSms()
-        var newCount = 0
-
-        for (sms in smsList) {
-            val existing = transactionDao.countBySmsSource(sms.body.take(200))
-            if (existing == 0) {
-                val parsed = SmsParser.parse(sms.body, sms.sender, sms.timestamp)
-                if (parsed != null) {
-                    val transaction = SmsParser.parsedSmsToTransaction(parsed, sms.body)
-                    transactionDao.insertTransaction(transaction)
-                    newCount++
-                }
-            }
-        }
-        return newCount
-    }
 
     suspend fun importFromCsv(uri: Uri): Int {
         val transactions = mutableListOf<Transaction>()
