@@ -1,18 +1,28 @@
 package com.moneymanager.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -47,7 +57,7 @@ fun ExportScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Export Data") },
+                title = { Text("Export Data", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, "Back")
@@ -59,58 +69,136 @@ fun ExportScreen(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Spacer(Modifier.height(4.dp))
+
+            // ── Status banner ─────────────────────────────────────────────────
             if (state.exportMessage.isNotEmpty()) {
+                val isError = state.isExportError
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = if (state.isExportError) MaterialTheme.colorScheme.errorContainer
+                        containerColor = if (isError) MaterialTheme.colorScheme.errorContainer
                                          else MaterialTheme.colorScheme.secondaryContainer
                     ),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        state.exportMessage,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (state.isExportError) MaterialTheme.colorScheme.onErrorContainer
-                                else MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isError) Icons.Default.Error else Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = if (isError) MaterialTheme.colorScheme.onErrorContainer
+                                   else MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            state.exportMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isError) MaterialTheme.colorScheme.onErrorContainer
+                                    else MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
 
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("CSV Export", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Export all transactions to a CSV file stored on your device.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+            // ── CSV Export Card ───────────────────────────────────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.TableChart,
+                                null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "CSV Export",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                "Download all transactions as a spreadsheet file.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                     Button(
                         onClick = { viewModel.exportToCsv() },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
+                        Icon(Icons.Default.Download, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text("Export to CSV")
                     }
                 }
             }
 
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Notion Export", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Export transactions to a Notion database.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+            // ── Notion Export Card ────────────────────────────────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.tertiaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.CloudUpload,
+                                null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Notion Export",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                "Sync transactions directly to your Notion database.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
 
                     TextButton(
                         onClick = { instructionsExpanded = !instructionsExpanded },
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text(if (instructionsExpanded) "Hide setup instructions" else "Show setup instructions")
+                        Text(if (instructionsExpanded) "Hide setup guide" else "Show setup guide")
                         Spacer(Modifier.width(4.dp))
                         Icon(
                             if (instructionsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
@@ -121,31 +209,25 @@ fun ExportScreen(
                     if (instructionsExpanded) {
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = MaterialTheme.shapes.small,
+                            shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = "1. Go to https://www.notion.so/my-integrations and click \"New integration\".\n" +
-                                    "2. Give it a name (e.g. MoneyManager), select your workspace, and click Submit.\n" +
-                                    "3. Copy the \"Internal Integration Token\" — this is your API Key.\n" +
-                                    "4. In Notion, create a new database with these columns:\n" +
-                                    "   • Name (Title)\n" +
-                                    "   • Amount (Number)\n" +
-                                    "   • Type (Text)\n" +
-                                    "   • Category (Text)\n" +
-                                    "   • Date (Date)\n" +
-                                    "5. Open the database, click \"...\" → \"Connections\" and add your integration.\n" +
-                                    "6. Copy the database ID from its URL:\n" +
-                                    "   notion.so/<workspace>/<DATABASE_ID>?v=...",
+                                text = "1. Go to notion.so/my-integrations → \"New integration\"\n" +
+                                    "2. Copy the \"Internal Integration Token\" (API Key)\n" +
+                                    "3. Create a Notion database with these columns:\n" +
+                                    "   • Name (Title)  • Amount (Number)\n" +
+                                    "   • Type (Text)   • Category (Text)  • Date (Date)\n" +
+                                    "4. Database → \"…\" → \"Connections\" → add integration\n" +
+                                    "5. Copy 32-char database ID from the URL:\n" +
+                                    "   notion.so/<workspace>/<DATABASE_ID>?v=…",
                                 style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(12.dp)
+                                modifier = Modifier.padding(14.dp)
                             )
                         }
                     }
 
-                    HorizontalDivider()
-
-                    Text("Enter your credentials below:", style = MaterialTheme.typography.labelMedium)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                     OutlinedTextField(
                         value = notionApiKey,
@@ -153,7 +235,7 @@ fun ExportScreen(
                             notionApiKey = it
                             credentialsSaved = false
                         },
-                        label = { Text("Notion API Key") },
+                        label = { Text("API Key") },
                         placeholder = { Text("secret_xxxxxxxxxxxx") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -167,7 +249,8 @@ fun ExportScreen(
                                 )
                             }
                         },
-                        supportingText = { Text("Found at notion.so/my-integrations") }
+                        supportingText = { Text("From notion.so/my-integrations") },
+                        shape = RoundedCornerShape(10.dp)
                     )
 
                     OutlinedTextField(
@@ -180,15 +263,27 @@ fun ExportScreen(
                         placeholder = { Text("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        supportingText = { Text("32-character ID from your database URL") }
+                        supportingText = { Text("32-character ID from your database URL") },
+                        shape = RoundedCornerShape(10.dp)
                     )
 
                     if (credentialsSaved) {
-                        Text(
-                            "✓ Credentials saved",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                "Credentials saved",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -198,6 +293,7 @@ fun ExportScreen(
                                 credentialsSaved = true
                             },
                             modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
                             enabled = notionApiKey.isNotBlank() && notionDatabaseId.isNotBlank()
                         ) {
                             Text("Save")
@@ -209,8 +305,11 @@ fun ExportScreen(
                                 viewModel.exportToNotion(notionApiKey, notionDatabaseId)
                             },
                             modifier = Modifier.weight(2f),
+                            shape = RoundedCornerShape(10.dp),
                             enabled = notionApiKey.isNotBlank() && notionDatabaseId.isNotBlank()
                         ) {
+                            Icon(Icons.Default.CloudUpload, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
                             Text("Export to Notion")
                         }
                     }
@@ -221,3 +320,4 @@ fun ExportScreen(
         }
     }
 }
+

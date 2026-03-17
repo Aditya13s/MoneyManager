@@ -11,10 +11,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocalAtm
+import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.moneymanager.app.data.db.entities.AccountType
 import com.moneymanager.app.data.db.entities.TransactionCategory
 import com.moneymanager.app.data.db.entities.TransactionType
 import com.moneymanager.app.ui.theme.*
@@ -286,6 +292,35 @@ fun TransactionDetailScreen(
                             )
                         }
                     }
+                }
+            }
+
+            // ── Account Type ─────────────────────────────────────────────────
+            Text("Account Type", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                AccountType.entries.forEach { type ->
+                    val selected = editState.accountType == type
+                    val (icon, label) = when (type) {
+                        AccountType.BANK        -> Icons.Default.AccountBalance to "Bank"
+                        AccountType.CREDIT_CARD -> Icons.Default.CreditCard to "Credit Card"
+                        AccountType.WALLET      -> Icons.Default.AccountBalanceWallet to "Wallet"
+                        AccountType.CASH        -> Icons.Default.LocalAtm to "Cash"
+                        AccountType.UPI         -> Icons.Default.Smartphone to "UPI"
+                    }
+                    FilterChip(
+                        selected = selected,
+                        onClick = { viewModel.updateEditField("accountType", type) },
+                        label = { Text(label) },
+                        leadingIcon = { Icon(icon, null, modifier = Modifier.size(16.dp)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
                 }
             }
 
