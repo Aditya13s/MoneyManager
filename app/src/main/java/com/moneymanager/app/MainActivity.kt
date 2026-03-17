@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.moneymanager.app.ui.navigation.AppNavigation
 import com.moneymanager.app.ui.navigation.Screen
 import com.moneymanager.app.ui.theme.MoneyManagerTheme
+import com.moneymanager.app.viewmodel.DashboardViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -22,39 +24,60 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MoneyManagerTheme {
-                val navController = rememberNavController()
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route
+                val dashboardViewModel: DashboardViewModel = hiltViewModel()
+                val dashboardState by dashboardViewModel.state.collectAsState()
 
-                val bottomNavItems = listOf(Screen.Dashboard, Screen.TransactionList, Screen.Export)
+                // Wait until onboarding status is loaded from DataStore
+                val isOnboardingShown = dashboardState.isOnboardingShown
+                if (isOnboardingShown != null) {
+                    val startDestination = if (isOnboardingShown) {
+                        Screen.Dashboard.route
+                    } else {
+                        Screen.Onboarding.route
+                    }
 
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    bottomBar = {
-                        NavigationBar {
-                            bottomNavItems.forEach { screen ->
-                                NavigationBarItem(
-                                    icon = { Icon(screen.icon, contentDescription = screen.title) },
-                                    label = { Text(screen.title) },
-                                    selected = currentRoute == screen.route,
-                                    onClick = {
-                                        navController.navigate(screen.route) {
-                                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
+                    val navController = rememberNavController()
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentRoute = navBackStackEntry?.destination?.route
+
+                    // Hide bottom nav on full-screen routes
+                    val fullScreenRoutes = setOf(Screen.Onboarding.route, Screen.Settings.route)
+                    val showBottomBar = currentRoute !in fullScreenRoutes
+
+                    val bottomNavItems = listOf(Screen.Dashboard, Screen.TransactionList, Screen.Export)
+
+                    Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        bottomBar = {
+                            if (showBottomBar) {
+                                NavigationBar {
+                                    bottomNavItems.forEach { screen ->
+                                        NavigationBarItem(
+                                            icon = { Icon(screen.icon, contentDescription = screen.title) },
+                                            label = { Text(screen.title) },
+                                            selected = currentRoute == screen.route,
+                                            onClick = {
+                                                navController.navigate(screen.route) {
+                                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
+                                            }
+                                        )
                                     }
-                                )
+                                }
                             }
                         }
+                    ) { innerPadding ->
+                        AppNavigation(
+                            navController = navController,
+                            startDestination = startDestination,
+                            modifier = Modifier.padding(innerPadding)
+                        )
                     }
-                ) { innerPadding ->
-                    AppNavigation(
-                        navController = navController,
-                        modifier = Modifier.padding(innerPadding)
-                    )
                 }
             }
         }
     }
 }
+

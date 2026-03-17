@@ -23,7 +23,8 @@ data class DashboardState(
     val isLoading: Boolean = false,
     val isSyncing: Boolean = false,
     val syncMessage: String = "",
-    val amountsHidden: Boolean = false
+    val amountsHidden: Boolean = false,
+    val isOnboardingShown: Boolean? = null  // null = not yet determined
 )
 
 @HiltViewModel
@@ -46,11 +47,22 @@ class DashboardViewModel @Inject constructor(
                 _state.update { it.copy(amountsHidden = hidden) }
             }
         }
+        viewModelScope.launch {
+            prefsRepository.isOnboardingShown.collect { shown ->
+                _state.update { it.copy(isOnboardingShown = shown) }
+            }
+        }
     }
 
     fun toggleAmountsHidden() {
         viewModelScope.launch {
             prefsRepository.toggleAmountsHidden()
+        }
+    }
+
+    fun setOnboardingShown() {
+        viewModelScope.launch {
+            prefsRepository.setOnboardingShown()
         }
     }
 
@@ -93,7 +105,8 @@ class DashboardViewModel @Inject constructor(
                     newState.copy(
                         isSyncing = current.isSyncing,
                         syncMessage = current.syncMessage,
-                        amountsHidden = current.amountsHidden
+                        amountsHidden = current.amountsHidden,
+                        isOnboardingShown = current.isOnboardingShown
                     )
                 }
             }

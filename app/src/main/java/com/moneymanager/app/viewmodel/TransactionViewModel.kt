@@ -21,7 +21,8 @@ data class TransactionListState(
     val isExportError: Boolean = false,
     val amountsHidden: Boolean = false,
     val savedNotionApiKey: String = "",
-    val savedNotionDatabaseId: String = ""
+    val savedNotionDatabaseId: String = "",
+    val savedAccounts: List<String> = emptyList()
 )
 
 data class TransactionEditState(
@@ -69,6 +70,11 @@ class TransactionViewModel @Inject constructor(
                 _listState.update { it.copy(savedNotionApiKey = key, savedNotionDatabaseId = id) }
             }
         }
+        viewModelScope.launch {
+            prefsRepository.savedAccounts.collect { accounts ->
+                _listState.update { it.copy(savedAccounts = accounts) }
+            }
+        }
     }
 
     fun toggleAmountsHidden() {
@@ -80,6 +86,18 @@ class TransactionViewModel @Inject constructor(
     fun saveNotionCredentials(apiKey: String, databaseId: String) {
         viewModelScope.launch {
             prefsRepository.saveNotionCredentials(apiKey, databaseId)
+        }
+    }
+
+    fun addSavedAccount(account: String) {
+        viewModelScope.launch {
+            prefsRepository.addAccount(account)
+        }
+    }
+
+    fun removeSavedAccount(account: String) {
+        viewModelScope.launch {
+            prefsRepository.removeAccount(account)
         }
     }
 
@@ -186,6 +204,10 @@ class TransactionViewModel @Inject constructor(
                 } else {
                     repository.updateTransaction(transaction)
                 }
+            }
+            // Auto-save non-empty account names for future suggestions
+            if (state.account.isNotBlank()) {
+                prefsRepository.addAccount(state.account.trim())
             }
         }
         return true

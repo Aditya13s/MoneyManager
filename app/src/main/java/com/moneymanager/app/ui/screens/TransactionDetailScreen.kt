@@ -48,8 +48,12 @@ fun TransactionDetailScreen(
     viewModel: TransactionViewModel = hiltViewModel()
 ) {
     val editState by viewModel.editState.collectAsState()
+    val listState by viewModel.listState.collectAsState()
+    val savedAccounts = listState.savedAccounts
+
     var showError by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var accountDropdownExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val dateFormat = SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault())
 
@@ -97,7 +101,6 @@ fun TransactionDetailScreen(
                     }
                 },
                 actions = {
-                    // Delete button – only shown when editing an existing transaction
                     if (!editState.isNew) {
                         IconButton(onClick = { showDeleteDialog = true }) {
                             Icon(
@@ -239,14 +242,52 @@ fun TransactionDetailScreen(
                 }
             }
 
-            // ── Account ──────────────────────────────────────────────────────
-            OutlinedTextField(
-                value = editState.account,
-                onValueChange = { viewModel.updateEditField("account", it) },
-                label = { Text("Account") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+            // ── Account (with dropdown suggestions) ──────────────────────────
+            Text("Account", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            ExposedDropdownMenuBox(
+                expanded = accountDropdownExpanded && savedAccounts.isNotEmpty(),
+                onExpandedChange = { accountDropdownExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = editState.account,
+                    onValueChange = {
+                        viewModel.updateEditField("account", it)
+                        accountDropdownExpanded = true
+                    },
+                    label = { Text("Account") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    singleLine = true,
+                    trailingIcon = {
+                        if (savedAccounts.isNotEmpty()) {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountDropdownExpanded)
+                        }
+                    }
+                )
+                // Show matching saved accounts as dropdown options
+                val filtered = if (editState.account.isBlank()) {
+                    savedAccounts
+                } else {
+                    savedAccounts.filter { it.contains(editState.account, ignoreCase = true) }
+                }
+                if (filtered.isNotEmpty()) {
+                    ExposedDropdownMenu(
+                        expanded = accountDropdownExpanded,
+                        onDismissRequest = { accountDropdownExpanded = false }
+                    ) {
+                        filtered.forEach { account ->
+                            DropdownMenuItem(
+                                text = { Text(account) },
+                                onClick = {
+                                    viewModel.updateEditField("account", account)
+                                    accountDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
 
             // ── Date picker ──────────────────────────────────────────────────
             val calendar = remember(editState.date) {
@@ -268,7 +309,6 @@ fun TransactionDetailScreen(
                         disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 )
-                // Transparent overlay to capture taps and open the date picker
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -304,7 +344,9 @@ fun TransactionDetailScreen(
                     if (viewModel.saveTransaction()) navController.popBackStack()
                     else showError = true
                 },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
@@ -314,11 +356,13 @@ fun TransactionDetailScreen(
                 )
             }
 
-            // ── Delete button (edit mode only, at bottom for easy reach) ──────
+            // ── Delete button (edit mode only) ────────────────────────────────
             if (!editState.isNew) {
                 OutlinedButton(
                     onClick = { showDeleteDialog = true },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
