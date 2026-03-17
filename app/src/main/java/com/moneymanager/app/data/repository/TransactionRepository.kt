@@ -205,15 +205,24 @@ class TransactionRepository @Inject constructor(
         val transactions = transactionDao.getAllTransactions().first()
 
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        val fileName = "transactions_${System.currentTimeMillis()}.csv"
-        val file = File(context.getExternalFilesDir(null), fileName)
+        val fileNameDate = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val fileName = "MoneyManager_$fileNameDate.csv"
+
+        // Save to Downloads/MoneyManager/ so the user can easily find the file
+        val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(
+            android.os.Environment.DIRECTORY_DOWNLOADS
+        )
+        val exportDir = File(downloadsDir, "MoneyManager")
+        exportDir.mkdirs()
+        val file = File(exportDir, fileName)
 
         FileWriter(file).use { writer ->
-            writer.write("ID,Title,Amount,Type,Category,Account,Location,Date,Note\n")
+            writer.write("ID,Title,Amount,Type,Category,Account,AccountType,Location,Date,Note\n")
             transactions.forEach { t ->
                 writer.write(
                     "${t.id},\"${t.title}\",${t.amount},${t.type},${t.category}," +
-                    "\"${t.account}\",\"${t.location}\",\"${dateFormat.format(Date(t.date))}\",\"${t.note}\"\n"
+                    "\"${t.account}\",${t.accountType},\"${t.location}\"," +
+                    "\"${dateFormat.format(Date(t.date))}\",\"${t.note}\"\n"
                 )
             }
         }

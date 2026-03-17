@@ -7,7 +7,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.moneymanager.app.data.db.entities.Transaction
 
-@Database(entities = [Transaction::class], version = 2, exportSchema = false)
+@Database(entities = [Transaction::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
@@ -19,6 +19,16 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     "ALTER TABLE transactions ADD COLUMN accountType TEXT NOT NULL DEFAULT 'BANK'"
+                )
+            }
+        }
+
+        /** Coerce WALLET, CASH, UPI (removed from enum) back to BANK. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "UPDATE transactions SET accountType = 'BANK' " +
+                    "WHERE accountType NOT IN ('BANK','CREDIT_CARD')"
                 )
             }
         }

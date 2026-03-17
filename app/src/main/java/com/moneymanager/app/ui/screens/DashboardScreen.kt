@@ -10,12 +10,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.LocalAtm
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Upload
@@ -51,18 +48,21 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
-/** Morse-inspired dot-dash pattern used in place of amounts when privacy mode is on. */
-private const val HIDDEN_AMOUNT = "·−·−·−"
+private val MORSE_CHARS = listOf('·', '−')
+
+/** Generates a pseudo-random Morse-style mask seeded on the amount value so it is stable per amount. */
+private fun morseHide(amount: Double): String {
+    val rng = java.util.Random(amount.toBits())
+    val len = 5 + rng.nextInt(4) // 5–8 chars
+    return (1..len).map { MORSE_CHARS[rng.nextInt(2)] }.joinToString("")
+}
 
 private fun formatAmount(amount: Double, hidden: Boolean, format: NumberFormat): String =
-    if (hidden) HIDDEN_AMOUNT else format.format(amount)
+    if (hidden) morseHide(amount) else format.format(amount)
 
 private fun accountTypeIcon(accountType: AccountType): ImageVector = when (accountType) {
     AccountType.BANK        -> Icons.Default.AccountBalance
     AccountType.CREDIT_CARD -> Icons.Default.CreditCard
-    AccountType.WALLET      -> Icons.Default.AccountBalanceWallet
-    AccountType.CASH        -> Icons.Default.LocalAtm
-    AccountType.UPI         -> Icons.Default.Smartphone
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,14 +104,6 @@ fun DashboardScreen(
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate(Screen.TransactionDetail.createRoute(-1L)) },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Default.Add, "Add Transaction", tint = Color.White)
-            }
         }
     ) { padding ->
         LazyColumn(
@@ -386,7 +378,7 @@ fun MonthlyCard(
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    if (amountsHidden) "·−·−·−% of income spent"
+                    if (amountsHidden) "·−·−% of income"
                     else "${(expenseFraction * 100).toInt()}% of income spent",
                     style = MaterialTheme.typography.bodySmall,
                     color = barColor
@@ -556,7 +548,7 @@ fun TransactionCard(
                 }
             }
             Text(
-                text = if (amountsHidden) "$sign $HIDDEN_AMOUNT"
+                text = if (amountsHidden) "$sign ${morseHide(transaction.amount)}"
                        else "$sign${currencyFormat.format(transaction.amount)}",
                 color = amountColor,
                 fontWeight = FontWeight.Bold,

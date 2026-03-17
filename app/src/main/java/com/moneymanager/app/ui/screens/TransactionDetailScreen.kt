@@ -1,34 +1,35 @@
 package com.moneymanager.app.ui.screens
 
 import android.app.DatePickerDialog
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.LocalAtm
-import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -44,7 +45,7 @@ import com.moneymanager.app.viewmodel.TransactionViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
-private val quickAmounts = listOf("100", "500", "1000", "2000", "5000", "10000")
+private val quickAmounts = listOf("100", "500", "1,000", "2,000", "5,000", "10,000")
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -63,6 +64,17 @@ fun TransactionDetailScreen(
     val context = LocalContext.current
     val dateFormat = SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault())
 
+    // Derive accent colour from selected transaction type
+    val typeAccent by animateColorAsState(
+        targetValue = when (editState.type) {
+            TransactionType.INCOME   -> IncomeColor
+            TransactionType.EXPENSE  -> ExpenseColor
+            TransactionType.TRANSFER -> CategoryTransferColor
+        },
+        animationSpec = tween(300),
+        label = "typeAccent"
+    )
+
     LaunchedEffect(transactionId) {
         if (transactionId > 0) {
             viewModel.loadTransactionForEdit(transactionId)
@@ -71,7 +83,6 @@ fun TransactionDetailScreen(
         }
     }
 
-    // Delete confirmation dialog
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -97,7 +108,7 @@ fun TransactionDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = if (editState.isNew) "Add Transaction" else "Edit Transaction",
+                        text = if (editState.isNew) "New Transaction" else "Edit Transaction",
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -109,18 +120,8 @@ fun TransactionDetailScreen(
                 actions = {
                     if (!editState.isNew) {
                         IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Delete transaction",
-                                tint = MaterialTheme.colorScheme.error
-                            )
+                            Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
                         }
-                    }
-                    IconButton(onClick = {
-                        if (viewModel.saveTransaction()) navController.popBackStack()
-                        else showError = true
-                    }) {
-                        Icon(Icons.Default.Check, "Save")
                     }
                 }
             )
@@ -129,225 +130,298 @@ fun TransactionDetailScreen(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            // ── Error banner ────────────────────────────────────────────────
-            if (showError) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        "Please fill in all required fields (Title & Amount)",
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-            }
 
-            // ── Transaction Type selector ────────────────────────────────────
-            Text("Type", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TransactionType.entries.forEach { type ->
-                    val selected = editState.type == type
-                    val accent = when (type) {
-                        TransactionType.INCOME   -> IncomeColor
-                        TransactionType.EXPENSE  -> ExpenseColor
-                        TransactionType.TRANSFER -> CategoryTransferColor
-                    }
-                    FilterChip(
-                        selected = selected,
-                        onClick = { viewModel.updateEditField("type", type) },
-                        label = { Text(type.name) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = accent.copy(alpha = 0.15f),
-                            selectedLabelColor = accent
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = selected,
-                            selectedBorderColor = accent
+            // ── Hero amount area ─────────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(typeAccent.copy(alpha = 0.12f), Color.Transparent)
                         )
                     )
-                }
-            }
-
-            // ── Title ────────────────────────────────────────────────────────
-            OutlinedTextField(
-                value = editState.title,
-                onValueChange = { viewModel.updateEditField("title", it) },
-                label = { Text("Title *") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                isError = showError && editState.title.isBlank()
-            )
-
-            // ── Amount ───────────────────────────────────────────────────────
-            OutlinedTextField(
-                value = editState.amount,
-                onValueChange = { viewModel.updateEditField("amount", it) },
-                label = { Text("Amount (₹) *") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-                isError = showError && editState.amount.toDoubleOrNull() == null
-            )
-
-            // Quick-amount chips
-            Text("Quick amounts", style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(horizontal = 24.dp, vertical = 20.dp)
             ) {
-                quickAmounts.forEach { preset ->
-                    SuggestionChip(
-                        onClick = { viewModel.updateEditField("amount", preset) },
-                        label = { Text("₹$preset") }
-                    )
-                }
-            }
-
-            // ── Category grid ────────────────────────────────────────────────
-            Text("Category", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                TransactionCategory.entries.forEach { category ->
-                    val selected = editState.category == category
-                    val accent = category.badgeColor()
-                    Box(
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    // Transaction type big pill selector
+                    Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (selected) accent.copy(alpha = 0.18f) else Color.Transparent)
-                            .border(
-                                width = if (selected) 2.dp else 1.dp,
-                                color = if (selected) accent else MaterialTheme.colorScheme.outlineVariant,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .clickable { viewModel.updateEditField("category", category) }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        contentAlignment = Alignment.Center
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(category.emoji(), fontSize = 20.sp)
+                        TransactionType.entries.forEach { type ->
+                            val selected = editState.type == type
+                            val accent = when (type) {
+                                TransactionType.INCOME   -> IncomeColor
+                                TransactionType.EXPENSE  -> ExpenseColor
+                                TransactionType.TRANSFER -> CategoryTransferColor
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(if (selected) accent else Color.Transparent)
+                                    .clickable { viewModel.updateEditField("type", type) }
+                                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    type.name.lowercase().replaceFirstChar { it.uppercase() },
+                                    fontSize = 13.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(20.dp))
+
+                    // Big amount input
+                    val amountError = showError && editState.amount.replace(",", "").toDoubleOrNull() == null
+                    OutlinedTextField(
+                        value = editState.amount,
+                        onValueChange = { viewModel.updateEditField("amount", it) },
+                        textStyle = LocalTextStyle.current.copy(
+                            fontSize = 36.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            textAlign = TextAlign.Center,
+                            color = typeAccent
+                        ),
+                        placeholder = {
                             Text(
-                                text = category.name.toCategoryTitle(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (selected) accent else MaterialTheme.colorScheme.onSurface,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                                "0",
+                                fontSize = 36.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                                color = typeAccent.copy(alpha = 0.3f)
+                            )
+                        },
+                        prefix = {
+                            Text(
+                                "₹",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = typeAccent
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        isError = amountError,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = typeAccent,
+                            unfocusedBorderColor = typeAccent.copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Quick-amount chips
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        quickAmounts.forEach { preset ->
+                            val raw = preset.replace(",", "")
+                            SuggestionChip(
+                                onClick = { viewModel.updateEditField("amount", raw) },
+                                label = { Text("₹$preset", fontSize = 12.sp) },
+                                shape = CircleShape,
+                                colors = SuggestionChipDefaults.suggestionChipColors(
+                                    containerColor = typeAccent.copy(alpha = 0.08f),
+                                    labelColor = typeAccent
+                                ),
+                                border = SuggestionChipDefaults.suggestionChipBorder(
+                                    enabled = true,
+                                    borderColor = typeAccent.copy(alpha = 0.2f)
+                                )
                             )
                         }
                     }
                 }
             }
 
-            // ── Account (with dropdown suggestions) ──────────────────────────
-            Text("Account", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-            ExposedDropdownMenuBox(
-                expanded = accountDropdownExpanded && savedAccounts.isNotEmpty(),
-                onExpandedChange = { accountDropdownExpanded = it }
+            // ── Form fields ──────────────────────────────────────────────────
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                // Error banner
+                if (showError) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            "Please fill in Title and a valid Amount",
+                            modifier = Modifier.padding(12.dp),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+
+                // ── Title ────────────────────────────────────────────────────
                 OutlinedTextField(
-                    value = editState.account,
-                    onValueChange = {
-                        viewModel.updateEditField("account", it)
-                        accountDropdownExpanded = true
-                    },
-                    label = { Text("Account") },
+                    value = editState.title,
+                    onValueChange = { viewModel.updateEditField("title", it) },
+                    label = { Text("Title *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    isError = showError && editState.title.isBlank(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                // ── Category grid ─────────────────────────────────────────────
+                Text("Category", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TransactionCategory.entries.forEach { category ->
+                        val selected = editState.category == category
+                        val accent = category.badgeColor()
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (selected) accent.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .border(
+                                    width = if (selected) 1.5.dp else 0.dp,
+                                    color = if (selected) accent else Color.Transparent,
+                                    shape = RoundedCornerShape(14.dp)
+                                )
+                                .clickable { viewModel.updateEditField("category", category) }
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(category.emoji(), fontSize = 18.sp)
+                                Text(
+                                    text = category.name.toCategoryTitle(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (selected) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── Account with dropdown ────────────────────────────────────
+                ExposedDropdownMenuBox(
+                    expanded = accountDropdownExpanded && savedAccounts.isNotEmpty(),
+                    onExpandedChange = { accountDropdownExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = editState.account,
+                        onValueChange = {
+                            viewModel.updateEditField("account", it)
+                            accountDropdownExpanded = true
+                        },
+                        label = { Text("Account name") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        trailingIcon = {
+                            if (savedAccounts.isNotEmpty()) {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountDropdownExpanded)
+                            }
+                        }
+                    )
+                    val filtered = if (editState.account.isBlank()) savedAccounts
+                                   else savedAccounts.filter { it.contains(editState.account, ignoreCase = true) }
+                    if (filtered.isNotEmpty()) {
+                        ExposedDropdownMenu(expanded = accountDropdownExpanded, onDismissRequest = { accountDropdownExpanded = false }) {
+                            filtered.forEach { account ->
+                                DropdownMenuItem(
+                                    text = { Text(account) },
+                                    onClick = {
+                                        viewModel.updateEditField("account", account)
+                                        accountDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── Account Type: 2-option pill toggle ───────────────────────
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(),
-                    singleLine = true,
-                    trailingIcon = {
-                        if (savedAccounts.isNotEmpty()) {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountDropdownExpanded)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    AccountType.entries.forEach { type ->
+                        val selected = editState.accountType == type
+                        val (icon, label) = when (type) {
+                            AccountType.BANK        -> Icons.Default.AccountBalance to "Bank Account"
+                            AccountType.CREDIT_CARD -> Icons.Default.CreditCard to "Credit Card"
                         }
-                    }
-                )
-                // Show matching saved accounts as dropdown options
-                val filtered = if (editState.account.isBlank()) {
-                    savedAccounts
-                } else {
-                    savedAccounts.filter { it.contains(editState.account, ignoreCase = true) }
-                }
-                if (filtered.isNotEmpty()) {
-                    ExposedDropdownMenu(
-                        expanded = accountDropdownExpanded,
-                        onDismissRequest = { accountDropdownExpanded = false }
-                    ) {
-                        filtered.forEach { account ->
-                            DropdownMenuItem(
-                                text = { Text(account) },
-                                onClick = {
-                                    viewModel.updateEditField("account", account)
-                                    accountDropdownExpanded = false
-                                }
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (selected) MaterialTheme.colorScheme.primary
+                                    else Color.Transparent
+                                )
+                                .clickable { viewModel.updateEditField("accountType", type) }
+                                .padding(vertical = 10.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                icon,
+                                null,
+                                modifier = Modifier.size(18.dp),
+                                tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                label,
+                                fontSize = 13.sp,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 }
-            }
 
-            // ── Account Type ─────────────────────────────────────────────────
-            Text("Account Type", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                AccountType.entries.forEach { type ->
-                    val selected = editState.accountType == type
-                    val (icon, label) = when (type) {
-                        AccountType.BANK        -> Icons.Default.AccountBalance to "Bank"
-                        AccountType.CREDIT_CARD -> Icons.Default.CreditCard to "Credit Card"
-                        AccountType.WALLET      -> Icons.Default.AccountBalanceWallet to "Wallet"
-                        AccountType.CASH        -> Icons.Default.LocalAtm to "Cash"
-                        AccountType.UPI         -> Icons.Default.Smartphone to "UPI"
-                    }
-                    FilterChip(
-                        selected = selected,
-                        onClick = { viewModel.updateEditField("accountType", type) },
-                        label = { Text(label) },
-                        leadingIcon = { Icon(icon, null, modifier = Modifier.size(16.dp)) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+                // ── Date picker ──────────────────────────────────────────────
+                val calendar = remember(editState.date) {
+                    Calendar.getInstance().apply { timeInMillis = editState.date }
+                }
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = dateFormat.format(Date(editState.date)),
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        label = { Text("Date") },
+                        trailingIcon = { Icon(Icons.Default.CalendarMonth, null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
-                }
-            }
-
-            // ── Date picker ──────────────────────────────────────────────────
-            val calendar = remember(editState.date) {
-                Calendar.getInstance().apply { timeInMillis = editState.date }
-            }
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = dateFormat.format(Date(editState.date)),
-                    onValueChange = {},
-                    readOnly = true,
-                    enabled = false,
-                    label = { Text("Date") },
-                    trailingIcon = { Icon(Icons.Default.CalendarMonth, null) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                        disabledBorderColor = MaterialTheme.colorScheme.outline,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable {
+                    Box(
+                        modifier = Modifier.matchParentSize().clickable {
                             DatePickerDialog(
                                 context,
                                 { _, year, month, day ->
@@ -359,59 +433,57 @@ fun TransactionDetailScreen(
                                 calendar.get(Calendar.DAY_OF_MONTH)
                             ).show()
                         }
-                )
-            }
-
-            // ── Note ─────────────────────────────────────────────────────────
-            OutlinedTextField(
-                value = editState.note,
-                onValueChange = { viewModel.updateEditField("note", it) },
-                label = { Text("Note") },
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 3
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            // ── Save button ───────────────────────────────────────────────────
-            Button(
-                onClick = {
-                    if (viewModel.saveTransaction()) navController.popBackStack()
-                    else showError = true
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    text = if (editState.isNew) "Add Transaction" else "Save Changes",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            // ── Delete button (edit mode only) ────────────────────────────────
-            if (!editState.isNew) {
-                OutlinedButton(
-                    onClick = { showDeleteDialog = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
-                ) {
-                    Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Delete Transaction", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    )
                 }
-            }
 
-            Spacer(Modifier.height(16.dp))
+                // ── Note ─────────────────────────────────────────────────────
+                OutlinedTextField(
+                    value = editState.note,
+                    onValueChange = { viewModel.updateEditField("note", it) },
+                    label = { Text("Note") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3,
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                // ── Save button ───────────────────────────────────────────────
+                Button(
+                    onClick = {
+                        if (viewModel.saveTransaction()) navController.popBackStack()
+                        else showError = true
+                    },
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = typeAccent)
+                ) {
+                    Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (editState.isNew) "Add Transaction" else "Save Changes",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // ── Delete button ─────────────────────────────────────────────
+                if (!editState.isNew) {
+                    OutlinedButton(
+                        onClick = { showDeleteDialog = true },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Icon(Icons.Default.Delete, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Delete", fontSize = 15.sp)
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+            }
         }
     }
 }
-

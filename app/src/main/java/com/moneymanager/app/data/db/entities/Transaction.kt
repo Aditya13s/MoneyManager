@@ -11,7 +11,7 @@ enum class TransactionCategory {
 }
 
 /** Identifies the kind of account used in a transaction. */
-enum class AccountType { BANK, CREDIT_CARD, WALLET, CASH, UPI }
+enum class AccountType { BANK, CREDIT_CARD }
 
 @Entity(tableName = "transactions")
 data class Transaction(
