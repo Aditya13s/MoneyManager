@@ -120,8 +120,8 @@ fun ExportScreen(
                                     "4. In Notion, create a new database with these columns:\n" +
                                     "   • Name (Title)\n" +
                                     "   • Amount (Number)\n" +
-                                    "   • Type (Select: INCOME, EXPENSE, TRANSFER)\n" +
-                                    "   • Category (Select)\n" +
+                                    "   • Type (Text)\n" +
+                                    "   • Category (Text)\n" +
                                     "   • Date (Date)\n" +
                                     "5. Open the database, click \"...\" → \"Connections\" and add your integration.\n" +
                                     "6. Copy the database ID from its URL:\n" +

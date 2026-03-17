@@ -311,11 +311,19 @@ class TransactionRepository @Inject constructor(
         properties.add("Amount", amountProp)
 
         val typeProp = JsonObject()
-        typeProp.add("select", JsonObject().apply { addProperty("name", transaction.type.name) })
+        val typeArray = com.google.gson.JsonArray()
+        typeArray.add(JsonObject().apply {
+            add("text", JsonObject().apply { addProperty("content", transaction.type.name) })
+        })
+        typeProp.add("rich_text", typeArray)
         properties.add("Type", typeProp)
 
         val categoryProp = JsonObject()
-        categoryProp.add("select", JsonObject().apply { addProperty("name", transaction.category.name) })
+        val categoryArray = com.google.gson.JsonArray()
+        categoryArray.add(JsonObject().apply {
+            add("text", JsonObject().apply { addProperty("content", transaction.category.name) })
+        })
+        categoryProp.add("rich_text", categoryArray)
         properties.add("Category", categoryProp)
 
         val dateProp = JsonObject()
