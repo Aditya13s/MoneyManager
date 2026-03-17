@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Data-extraction rules for Android 12+ (API 31+).
+    Ensures the Room database and DataStore preferences are included in
+    both cloud backup (Auto Backup) and device-to-device transfer so that
+    data is retained across uninstalls, reinstalls, and device upgrades.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="money_manager_db" />
+        <include domain="database" path="money_manager_db-shm" />
+        <include domain="database" path="money_manager_db-wal" />
+        <include domain="file" path="datastore/user_preferences.preferences_pb" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="money_manager_db" />
+        <include domain="database" path="money_manager_db-shm" />
+        <include domain="database" path="money_manager_db-wal" />
+        <include domain="file" path="datastore/user_preferences.preferences_pb" />
+    </device-transfer>
+</data-extraction-rules>

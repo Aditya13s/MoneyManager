@@ -197,6 +197,12 @@ class TransactionViewModel @Inject constructor(
         }
     }
 
+    fun deleteTransactionById(id: Long) {
+        viewModelScope.launch {
+            repository.deleteTransactionById(id)
+        }
+    }
+
     fun prepareNewTransaction() {
         _editState.value = TransactionEditState()
     }
