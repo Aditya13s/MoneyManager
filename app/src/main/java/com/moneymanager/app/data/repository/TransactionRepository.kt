@@ -9,14 +9,11 @@ import com.moneymanager.app.data.db.entities.Transaction
 import com.moneymanager.app.data.db.entities.TransactionCategory
 import com.moneymanager.app.data.db.entities.TransactionType
 import com.moneymanager.app.data.network.NotionApiService
-import com.moneymanager.app.data.sms.SmsReader
-import com.moneymanager.app.data.sms.SmsParser
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.io.BufferedReader
 import java.io.File
-import java.io.FileWriter
 import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.*
@@ -26,7 +23,6 @@ import javax.inject.Singleton
 @Singleton
 class TransactionRepository @Inject constructor(
     private val transactionDao: TransactionDao,
-    private val smsReader: SmsReader,
     private val notionApiService: NotionApiService,
     @ApplicationContext private val context: Context
 ) {
@@ -65,24 +61,6 @@ class TransactionRepository @Inject constructor(
 
     suspend fun deleteTransactionById(id: Long) =
         transactionDao.deleteTransactionById(id)
-
-    suspend fun syncSmsTransactions(): Int {
-        val smsList = smsReader.readFinancialSms()
-        var newCount = 0
-
-        for (sms in smsList) {
-            val existing = transactionDao.countBySmsSource(sms.body.take(200))
-            if (existing == 0) {
-                val parsed = SmsParser.parse(sms.body, sms.sender, sms.timestamp)
-                if (parsed != null) {
-                    val transaction = SmsParser.parsedSmsToTransaction(parsed, sms.body)
-                    transactionDao.insertTransaction(transaction)
-                    newCount++
-                }
-            }
-        }
-        return newCount
-    }
 
     suspend fun importFromCsv(uri: Uri): Int {
         val transactions = mutableListOf<Transaction>()
@@ -205,19 +183,46 @@ class TransactionRepository @Inject constructor(
         val transactions = transactionDao.getAllTransactions().first()
 
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        val fileName = "transactions_${System.currentTimeMillis()}.csv"
-        val file = File(context.getExternalFilesDir(null), fileName)
+        val fileNameDate = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val fileName = "MoneyManager_$fileNameDate.csv"
 
-        FileWriter(file).use { writer ->
-            writer.write("ID,Title,Amount,Type,Category,Account,Location,Date,Note\n")
+        // Build CSV content
+        val csv = buildString {
+            append("ID,Title,Amount,Type,Category,Account,AccountType,Location,Date,Note\n")
             transactions.forEach { t ->
-                writer.write(
-                    "${t.id},\"${t.title}\",${t.amount},${t.type},${t.category}," +
-                    "\"${t.account}\",\"${t.location}\",\"${dateFormat.format(Date(t.date))}\",\"${t.note}\"\n"
-                )
+                append("${t.id},\"${t.title}\",${t.amount},${t.type},${t.category},")
+                append("\"${t.account}\",${t.accountType},\"${t.location}\",")
+                append("\"${dateFormat.format(Date(t.date))}\",\"${t.note}\"\n")
             }
         }
-        return file
+
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            // Android 10+ — use MediaStore to write into Downloads/MoneyManager/
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName)
+                put(android.provider.MediaStore.Downloads.MIME_TYPE, "text/csv")
+                put(android.provider.MediaStore.Downloads.RELATIVE_PATH,
+                    "${android.os.Environment.DIRECTORY_DOWNLOADS}/MoneyManager")
+            }
+            val resolver = context.contentResolver
+            val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: throw Exception("Could not create file in Downloads")
+            resolver.openOutputStream(uri)?.use { it.write(csv.toByteArray()) }
+                ?: throw Exception("Could not open output stream")
+            // Return a reference file path for the success message (not used to read, just for display)
+            File(
+                android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),
+                "MoneyManager/$fileName"
+            )
+        } else {
+            // Android 9 and below — direct file write requires WRITE_EXTERNAL_STORAGE
+            val exportDir = File(
+                android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),
+                "MoneyManager"
+            )
+            exportDir.mkdirs()
+            File(exportDir, fileName).also { it.writeText(csv) }
+        }
     }
 
     suspend fun exportToNotion(apiKey: String, databaseId: String): Result<Int> {

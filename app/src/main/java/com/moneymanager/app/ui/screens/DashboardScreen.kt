@@ -9,7 +9,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Upload
@@ -20,8 +22,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -29,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.moneymanager.app.data.db.entities.AccountType
 import com.moneymanager.app.data.db.entities.Transaction
 import com.moneymanager.app.data.db.entities.TransactionCategory
 import com.moneymanager.app.data.db.entities.TransactionType
@@ -42,10 +47,59 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
-private const val HIDDEN_AMOUNT = "••••••"
+// Horizontal lines (wide): ─ ━ ═
+// Horizontal lines (short): ╌ ╍ ┄ ┅
+// Vertical lines: │ ┃ ╎ ╏ ┆ ┇
+// Dot: ·
+// Mixed together so the mask looks like a random grid of crossing strokes
+private val MORSE_H   = listOf('─', '━', '═', '╌', '╍', '┄', '┅') // horizontal
+private val MORSE_V   = listOf('│', '┃', '╎', '╏', '┆', '┇')       // vertical
+private val MORSE_DOT = listOf('·', '•')                              // dot
+
+// Cache masks so the same amount always renders identically across recompositions,
+// and we never allocate a new Random on recompose.
+// The explicit type annotation is required for Kotlin to infer the anonymous subclass correctly.
+private val morseMaskCache: MutableMap<Long, String> =
+    java.util.Collections.synchronizedMap(
+        object : LinkedHashMap<Long, String>(64, 0.75f, true) {
+            override fun removeEldestEntry(eldest: Map.Entry<Long, String>) = size > 128
+        }
+    )
+
+/**
+ * Generates a pseudo-random privacy mask seeded on the raw bits of [amount].
+ * Each mask is a random sequence of horizontal lines (─ ━ ═ …), vertical lines (│ ┃ ╎ …)
+ * and dots (· •), giving a non-linear, non-symmetric appearance per amount.
+ * Length varies between 5 and 9 symbols with optional thin-space gaps for rhythm.
+ */
+private fun morseHide(amount: Double): String {
+    val key = amount.toBits()
+    return morseMaskCache.getOrPut(key) {
+        val rng = java.util.Random(key)
+        val len = 5 + rng.nextInt(5) // 5–9 symbols
+        val sb = StringBuilder()
+        repeat(len) {
+            // Bias toward horizontal lines (they look wider and balance vertical ones)
+            val pool = when (rng.nextInt(10)) {
+                in 0..4 -> MORSE_H   // 50 % horizontal
+                in 5..7 -> MORSE_V   // 30 % vertical
+                else    -> MORSE_DOT // 20 % dot
+            }
+            sb.append(pool[rng.nextInt(pool.size)])
+            // Randomly insert a thin-space to break up regularity
+            if (rng.nextBoolean()) sb.append('\u2009')
+        }
+        sb.toString().trim()
+    }
+}
 
 private fun formatAmount(amount: Double, hidden: Boolean, format: NumberFormat): String =
-    if (hidden) HIDDEN_AMOUNT else format.format(amount)
+    if (hidden) morseHide(amount) else format.format(amount)
+
+private fun accountTypeIcon(accountType: AccountType): ImageVector = when (accountType) {
+    AccountType.BANK        -> Icons.Default.AccountBalance
+    AccountType.CREDIT_CARD -> Icons.Default.CreditCard
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,16 +135,11 @@ fun DashboardScreen(
                     IconButton(onClick = { csvImportLauncher.launch("*/*") }) {
                         Icon(Icons.Default.Upload, contentDescription = "Import CSV")
                     }
+                    IconButton(onClick = { navController.navigate(Screen.Settings.route) }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
                 }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate(Screen.TransactionDetail.createRoute(-1L)) },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Default.Add, "Add Transaction", tint = Color.White)
-            }
         }
     ) { padding ->
         LazyColumn(
@@ -104,8 +153,11 @@ fun DashboardScreen(
                     Spacer(Modifier.height(8.dp))
                 }
                 if (state.syncMessage.isNotEmpty()) {
-                    Text(state.syncMessage, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary)
+                    Text(
+                        state.syncMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
                     Spacer(Modifier.height(8.dp))
                 }
             }
@@ -172,68 +224,129 @@ fun DashboardScreen(
 }
 
 @Composable
-fun SummaryCard(income: Double, expense: Double, remaining: Double, format: NumberFormat, amountsHidden: Boolean = false) {
+fun SummaryCard(
+    income: Double,
+    expense: Double,
+    remaining: Double,
+    format: NumberFormat,
+    amountsHidden: Boolean = false
+) {
     val isPositive = remaining >= 0
     val gradientColors = if (isPositive)
-        listOf(Color(0xFF5C35CC), Color(0xFF7C4DFF))
+        listOf(Color(0xFF1A0E35), Color(0xFF0D2147))
     else
-        listOf(Color(0xFFB71C1C), Color(0xFFE53935))
+        listOf(Color(0xFF2D0A0A), Color(0xFF1A0D0D))
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Brush.linearGradient(gradientColors))
-                .padding(20.dp)
+                .background(
+                    Brush.linearGradient(
+                        colors = gradientColors,
+                        start = Offset(0f, 0f),
+                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                    )
+                )
         ) {
-            Column {
+            // Decorative background circle (glassmorphism accent)
+            Box(
+                modifier = Modifier
+                    .size(200.dp)
+                    .offset(x = 160.dp, y = (-40).dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.04f))
+            )
+            Column(modifier = Modifier.padding(24.dp)) {
                 Text(
                     "Total Balance",
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color.White.copy(alpha = 0.8f)
+                    color = Color.White.copy(alpha = 0.55f),
+                    letterSpacing = 1.sp
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(8.dp))
                 Text(
                     text = formatAmount(remaining, amountsHidden, format),
-                    fontSize = 36.sp,
+                    fontSize = 40.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
+                    color = Color.White,
+                    letterSpacing = (-0.5).sp
                 )
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(24.dp))
+                HorizontalDivider(color = Color.White.copy(alpha = 0.12f))
+                Spacer(Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    // Income pill
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.15f))
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(Icons.Default.TrendingUp, null, tint = Color(0xFF69FF47), modifier = Modifier.size(18.dp))
-                        Column {
-                            Text("Income", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f))
-                            Text(formatAmount(income, amountsHidden, format), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    // Income column
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF00E676).copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.TrendingUp,
+                                    null,
+                                    tint = Color(0xFF00E676),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                            Text(
+                                "Income",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.55f)
+                            )
                         }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            formatAmount(income, amountsHidden, format),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
                     }
-                    // Expense pill
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.15f))
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(Icons.Default.TrendingDown, null, tint = Color(0xFFFF5252), modifier = Modifier.size(18.dp))
-                        Column {
-                            Text("Expenses", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f))
-                            Text(formatAmount(expense, amountsHidden, format), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    // Expense column
+                    Column(horizontalAlignment = Alignment.End) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFF5252).copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.TrendingDown,
+                                    null,
+                                    tint = Color(0xFFFF5252),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                            Text(
+                                "Expenses",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.55f)
+                            )
                         }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            formatAmount(expense, amountsHidden, format),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
                     }
                 }
             }
@@ -242,10 +355,18 @@ fun SummaryCard(income: Double, expense: Double, remaining: Double, format: Numb
 }
 
 @Composable
-fun MonthlyCard(monthlyIncome: Double, monthlyExpense: Double, format: NumberFormat, amountsHidden: Boolean = false) {
+fun MonthlyCard(
+    monthlyIncome: Double,
+    monthlyExpense: Double,
+    format: NumberFormat,
+    amountsHidden: Boolean = false
+) {
     val monthName = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date())
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("📅  $monthName", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
@@ -258,24 +379,43 @@ fun MonthlyCard(monthlyIncome: Double, monthlyExpense: Double, format: NumberFor
                     if (amountsHidden || monthlyIncome >= monthlyExpense) IncomeColor else ExpenseColor
                 )
             }
-            Spacer(Modifier.height(12.dp))
             if (monthlyIncome > 0) {
-                val progress = (monthlyExpense / monthlyIncome).toFloat().coerceIn(0f, 1f)
+                Spacer(Modifier.height(14.dp))
+                val expenseFraction = (monthlyExpense / monthlyIncome).toFloat().coerceIn(0f, 1f)
                 val barColor = when {
-                    progress < 0.5f  -> IncomeColor
-                    progress < 0.75f -> Color(0xFFFFAB00)
-                    else             -> ExpenseColor
+                    expenseFraction < 0.5f  -> IncomeColor
+                    expenseFraction < 0.75f -> Color(0xFFFFAB00)
+                    else                    -> ExpenseColor
                 }
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                    color = barColor,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-                Spacer(Modifier.height(4.dp))
+                // Segmented income/expense bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                ) {
+                    if (expenseFraction > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(expenseFraction)
+                                .fillMaxHeight()
+                                .background(barColor)
+                        )
+                    }
+                    val savingsFraction = 1f - expenseFraction
+                    if (savingsFraction > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(savingsFraction)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        )
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
                 Text(
-                    if (amountsHidden) "•••% of income spent"
-                    else "${(progress * 100).toInt()}% of income spent",
+                    if (amountsHidden) "·−·−% of income"
+                    else "${(expenseFraction * 100).toInt()}% of income spent",
                     style = MaterialTheme.typography.bodySmall,
                     color = barColor
                 )
@@ -294,14 +434,53 @@ fun SummaryItem(label: String, value: String, color: Color) {
 
 @Composable
 fun CategoryBreakdownCard(breakdown: Map<String, Double>, format: NumberFormat, amountsHidden: Boolean = false) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("📊  Spending by Category", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             val total = breakdown.values.sum()
-            breakdown.entries.sortedByDescending { it.value }.take(5).forEach { (categoryName, amount) ->
-                val category = runCatching { TransactionCategory.valueOf(categoryName) }.getOrDefault(TransactionCategory.OTHER)
+            val sorted = breakdown.entries.sortedByDescending { it.value }
+
+            // Segmented colour bar
+            if (total > 0) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                ) {
+                    sorted.take(5).forEach { (categoryName, amount) ->
+                        val category = runCatching { TransactionCategory.valueOf(categoryName) }
+                            .getOrDefault(TransactionCategory.OTHER)
+                        val fraction = (amount / total).toFloat()
+                        Box(
+                            modifier = Modifier
+                                .weight(fraction.coerceAtLeast(0.01f))
+                                .fillMaxHeight()
+                                .background(category.badgeColor())
+                        )
+                    }
+                    val shownTotal = sorted.take(5).sumOf { it.value }
+                    val otherFraction = ((total - shownTotal) / total).toFloat()
+                    if (otherFraction > 0.01f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(otherFraction)
+                                .fillMaxHeight()
+                                .background(Color.Gray.copy(alpha = 0.25f))
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            sorted.take(5).forEach { (categoryName, amount) ->
+                val category = runCatching { TransactionCategory.valueOf(categoryName) }
+                    .getOrDefault(TransactionCategory.OTHER)
                 val pct = if (total > 0) (amount / total).toFloat().coerceIn(0f, 1f) else 0f
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -319,16 +498,26 @@ fun CategoryBreakdownCard(breakdown: Map<String, Double>, format: NumberFormat, 
                             Text(category.emoji(), fontSize = 14.sp)
                         }
                         Spacer(Modifier.width(8.dp))
+                        Text(categoryName.toCategoryTitle(), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (!amountsHidden && total > 0) {
+                            Text(
+                                "${(pct * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = category.badgeColor(),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                         Text(
-                            categoryName.toCategoryTitle(),
-                            style = MaterialTheme.typography.bodySmall
+                            formatAmount(amount, amountsHidden, format),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
-                    Text(
-                        formatAmount(amount, amountsHidden, format),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
                 }
                 LinearProgressIndicator(
                     progress = { pct },
@@ -344,10 +533,15 @@ fun CategoryBreakdownCard(breakdown: Map<String, Double>, format: NumberFormat, 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amountsHidden: Boolean = false, onClick: () -> Unit) {
+fun TransactionCard(
+    transaction: Transaction,
+    currencyFormat: NumberFormat,
+    amountsHidden: Boolean = false,
+    onClick: () -> Unit
+) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     val amountColor = if (transaction.type == TransactionType.EXPENSE) ExpenseColor else IncomeColor
-    val sign = if (transaction.type == TransactionType.EXPENSE) "-" else "+"
+    val sign = if (transaction.type == TransactionType.EXPENSE) "−" else "+"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -372,14 +566,25 @@ fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amou
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(transaction.title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                Text(
-                    "${transaction.category.name.toCategoryTitle()} • ${dateFormat.format(Date(transaction.date))}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = accountTypeIcon(transaction.accountType),
+                        contentDescription = null,
+                        modifier = Modifier.size(11.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "${transaction.category.name.toCategoryTitle()} • ${dateFormat.format(Date(transaction.date))}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             Text(
-                text = if (amountsHidden) "$sign $HIDDEN_AMOUNT"
+                text = if (amountsHidden) "$sign ${morseHide(transaction.amount)}"
                        else "$sign${currencyFormat.format(transaction.amount)}",
                 color = amountColor,
                 fontWeight = FontWeight.Bold,
@@ -388,4 +593,3 @@ fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amou
         }
     }
 }
-

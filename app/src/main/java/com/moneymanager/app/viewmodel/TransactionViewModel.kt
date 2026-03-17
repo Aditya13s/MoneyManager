@@ -2,6 +2,7 @@ package com.moneymanager.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.moneymanager.app.data.db.entities.AccountType
 import com.moneymanager.app.data.db.entities.Transaction
 import com.moneymanager.app.data.db.entities.TransactionCategory
 import com.moneymanager.app.data.db.entities.TransactionType
@@ -21,7 +22,8 @@ data class TransactionListState(
     val isExportError: Boolean = false,
     val amountsHidden: Boolean = false,
     val savedNotionApiKey: String = "",
-    val savedNotionDatabaseId: String = ""
+    val savedNotionDatabaseId: String = "",
+    val savedAccounts: List<String> = emptyList()
 )
 
 data class TransactionEditState(
@@ -31,6 +33,7 @@ data class TransactionEditState(
     val type: TransactionType = TransactionType.EXPENSE,
     val category: TransactionCategory = TransactionCategory.OTHER,
     val account: String = "",
+    val accountType: AccountType = AccountType.BANK,
     val location: String = "",
     val note: String = "",
     val date: Long = System.currentTimeMillis(),
@@ -69,6 +72,11 @@ class TransactionViewModel @Inject constructor(
                 _listState.update { it.copy(savedNotionApiKey = key, savedNotionDatabaseId = id) }
             }
         }
+        viewModelScope.launch {
+            prefsRepository.savedAccounts.collect { accounts ->
+                _listState.update { it.copy(savedAccounts = accounts) }
+            }
+        }
     }
 
     fun toggleAmountsHidden() {
@@ -80,6 +88,18 @@ class TransactionViewModel @Inject constructor(
     fun saveNotionCredentials(apiKey: String, databaseId: String) {
         viewModelScope.launch {
             prefsRepository.saveNotionCredentials(apiKey, databaseId)
+        }
+    }
+
+    fun addSavedAccount(account: String) {
+        viewModelScope.launch {
+            prefsRepository.addAccount(account)
+        }
+    }
+
+    fun removeSavedAccount(account: String) {
+        viewModelScope.launch {
+            prefsRepository.removeAccount(account)
         }
     }
 
@@ -129,6 +149,7 @@ class TransactionViewModel @Inject constructor(
                     type = t.type,
                     category = t.category,
                     account = t.account,
+                    accountType = t.accountType,
                     location = t.location,
                     note = t.note,
                     date = t.date,
@@ -146,6 +167,7 @@ class TransactionViewModel @Inject constructor(
                 "type" -> state.copy(type = value as TransactionType)
                 "category" -> state.copy(category = value as TransactionCategory)
                 "account" -> state.copy(account = value as String)
+                "accountType" -> state.copy(accountType = value as AccountType)
                 "location" -> state.copy(location = value as String)
                 "note" -> state.copy(note = value as String)
                 "date" -> state.copy(date = value as Long)
@@ -166,6 +188,7 @@ class TransactionViewModel @Inject constructor(
             type = state.type,
             category = state.category,
             account = state.account.trim(),
+            accountType = state.accountType,
             location = state.location.trim(),
             note = state.note.trim(),
             date = state.date
@@ -186,6 +209,10 @@ class TransactionViewModel @Inject constructor(
                 } else {
                     repository.updateTransaction(transaction)
                 }
+            }
+            // Auto-save non-empty account names for future suggestions
+            if (state.account.isNotBlank()) {
+                prefsRepository.addAccount(state.account.trim())
             }
         }
         return true

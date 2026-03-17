@@ -48,7 +48,4 @@ interface TransactionDao {
 
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun deleteTransactionById(id: Long)
-
-    @Query("SELECT COUNT(*) FROM transactions WHERE smsSource = :smsBody")
-    suspend fun countBySmsSource(smsBody: String): Int
 }

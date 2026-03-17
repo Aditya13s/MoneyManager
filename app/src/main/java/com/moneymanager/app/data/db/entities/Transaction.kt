@@ -10,6 +10,9 @@ enum class TransactionCategory {
     HEALTH, UTILITIES, RENT, TRANSFER, OTHER
 }
 
+/** Identifies the kind of account used in a transaction. */
+enum class AccountType { BANK, CREDIT_CARD }
+
 @Entity(tableName = "transactions")
 data class Transaction(
     @PrimaryKey(autoGenerate = true)
@@ -19,6 +22,7 @@ data class Transaction(
     val type: TransactionType,
     val category: TransactionCategory,
     val account: String,
+    val accountType: AccountType = AccountType.BANK,
     val location: String = "",
     val date: Long = System.currentTimeMillis(),
     val note: String = "",

@@ -14,6 +14,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.moneymanager.app.ui.screens.DashboardScreen
 import com.moneymanager.app.ui.screens.ExportScreen
+import com.moneymanager.app.ui.screens.OnboardingScreen
+import com.moneymanager.app.ui.screens.SettingsScreen
 import com.moneymanager.app.ui.screens.TransactionDetailScreen
 import com.moneymanager.app.ui.screens.TransactionListScreen
 
@@ -24,11 +26,20 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
         fun createRoute(id: Long = -1L) = "transaction/$id"
     }
     object Export : Screen("export", "Export", Icons.Default.Share)
+    object Settings : Screen("settings", "Settings", Icons.Default.Dashboard)
+    object Onboarding : Screen("onboarding", "Onboarding", Icons.Default.Dashboard)
 }
 
 @Composable
-fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifier) {
-    NavHost(navController = navController, startDestination = Screen.Dashboard.route, modifier = modifier) {
+fun AppNavigation(
+    navController: NavHostController,
+    startDestination: String = Screen.Dashboard.route,
+    modifier: Modifier = Modifier
+) {
+    NavHost(navController = navController, startDestination = startDestination, modifier = modifier) {
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(navController = navController)
+        }
         composable(Screen.Dashboard.route) {
             DashboardScreen(navController = navController)
         }
@@ -45,5 +56,9 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
         composable(Screen.Export.route) {
             ExportScreen(navController = navController)
         }
+        composable(Screen.Settings.route) {
+            SettingsScreen(navController = navController)
+        }
     }
 }
+
