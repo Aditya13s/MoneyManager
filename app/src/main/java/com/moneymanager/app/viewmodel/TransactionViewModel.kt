@@ -16,7 +16,8 @@ data class TransactionListState(
     val isLoading: Boolean = false,
     val searchQuery: String = "",
     val selectedType: TransactionType? = null,
-    val exportMessage: String = ""
+    val exportMessage: String = "",
+    val isExportError: Boolean = false
 )
 
 data class TransactionEditState(
@@ -180,11 +181,19 @@ class TransactionViewModel @Inject constructor(
 
     fun exportToNotion(apiKey: String, databaseId: String) {
         viewModelScope.launch {
-            _listState.update { it.copy(exportMessage = "Exporting to Notion...") }
+            _listState.update { it.copy(exportMessage = "Exporting to Notion...", isExportError = false) }
             val result = repository.exportToNotion(apiKey, databaseId)
             result.fold(
-                onSuccess = { count -> _listState.update { it.copy(exportMessage = "Exported $count transactions to Notion") } },
-                onFailure = { e -> _listState.update { it.copy(exportMessage = "Notion export failed: ${e.message}") } }
+                onSuccess = { count ->
+                    val msg = if (count == 0)
+                        "No new transactions to export — all transactions are already in Notion"
+                    else
+                        "Successfully exported $count transaction${if (count == 1) "" else "s"} to Notion"
+                    _listState.update { it.copy(exportMessage = msg, isExportError = false) }
+                },
+                onFailure = { e ->
+                    _listState.update { it.copy(exportMessage = "Notion export failed: ${e.message}", isExportError = true) }
+                }
             )
         }
     }

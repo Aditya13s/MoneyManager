@@ -2,6 +2,7 @@ package com.moneymanager.app.data.repository
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import com.google.gson.JsonObject
 import com.moneymanager.app.data.db.TransactionDao
 import com.moneymanager.app.data.db.entities.Transaction
@@ -29,6 +30,9 @@ class TransactionRepository @Inject constructor(
     private val notionApiService: NotionApiService,
     @ApplicationContext private val context: Context
 ) {
+    companion object {
+        private const val TAG = "NotionExport"
+    }
 
     fun getAllTransactions(): Flow<List<Transaction>> = transactionDao.getAllTransactions()
 
@@ -219,35 +223,70 @@ class TransactionRepository @Inject constructor(
     suspend fun exportToNotion(apiKey: String, databaseId: String): Result<Int> {
         return try {
             val unexported = transactionDao.getUnexportedTransactions()
+            Log.i(TAG, "Starting Notion export: ${unexported.size} transaction(s) to export")
+
+            if (unexported.isEmpty()) {
+                Log.i(TAG, "No unexported transactions found")
+                return Result.success(0)
+            }
+
             var exportedCount = 0
+            val errors = mutableListOf<String>()
 
             for (transaction in unexported) {
+                Log.d(TAG, "Exporting transaction #${transaction.id}: '${transaction.title}' " +
+                    "(${transaction.type}, amount=${transaction.amount})")
                 val body = buildNotionPageBody(databaseId, transaction)
-                val response = notionApiService.createPage(
-                    token = "Bearer $apiKey",
-                    body = body
-                )
-
-                if (response.isSuccessful) {
-                    val pageId = response.body()?.get("id")?.asString ?: ""
-                    transactionDao.updateTransaction(
-                        transaction.copy(notionPageId = pageId, isExportedToNotion = true)
+                try {
+                    val response = notionApiService.createPage(
+                        token = "Bearer $apiKey",
+                        body = body
                     )
-                    exportedCount++
-                } else {
-                    val errorBody = response.errorBody()?.string()?.take(300) ?: ""
-                    val message = when (response.code()) {
-                        400 -> "Bad request — check your database ID and column names (${response.code()})"
-                        401 -> "Unauthorized — verify your Notion API key (${response.code()})"
-                        403 -> "Forbidden — make sure your integration is invited to the database (${response.code()})"
-                        404 -> "Database not found — verify the database ID (${response.code()})"
-                        else -> "Notion API error ${response.code()}: $errorBody"
+
+                    if (response.isSuccessful) {
+                        val pageId = response.body()?.get("id")?.asString ?: ""
+                        Log.d(TAG, "Transaction #${transaction.id} exported successfully, pageId=$pageId")
+                        transactionDao.updateTransaction(
+                            transaction.copy(notionPageId = pageId, isExportedToNotion = true)
+                        )
+                        exportedCount++
+                    } else {
+                        val errorBody = (response.errorBody()?.string() ?: "").take(500)
+                        val titlePreview = transaction.title.take(50)
+                        Log.e(TAG, "Notion API error for transaction #${transaction.id} " +
+                            "'${transaction.title}': HTTP ${response.code()}, body=$errorBody")
+                        val message = when (response.code()) {
+                            400 -> "Bad request (400) for '$titlePreview': check database ID and column names. Details: $errorBody"
+                            401 -> "Unauthorized (401): verify your Notion API key. Details: $errorBody"
+                            403 -> "Forbidden (403): make sure your integration is connected to the database. Details: $errorBody"
+                            404 -> "Database not found (404): verify the database ID. Details: $errorBody"
+                            else -> "Notion API error ${response.code()} for '$titlePreview': $errorBody"
+                        }
+                        errors.add(message)
+                        // Auth errors affect all transactions — stop immediately
+                        if (response.code() == 401 || response.code() == 403) {
+                            Log.e(TAG, "Stopping export early due to auth error (${response.code()})")
+                            break
+                        }
                     }
-                    throw Exception(message)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Network error exporting transaction #${transaction.id}", e)
+                    errors.add("Network error for '${transaction.title}': ${e.message}")
                 }
             }
-            Result.success(exportedCount)
+
+            Log.i(TAG, "Notion export complete: $exportedCount succeeded, ${errors.size} failed")
+
+            when {
+                errors.isEmpty() -> Result.success(exportedCount)
+                exportedCount > 0 -> {
+                    val errorDetail = errors.joinToString("\n• ", prefix = "\n• ")
+                    Result.failure(Exception("Exported $exportedCount of ${unexported.size} transaction(s). Failures:$errorDetail"))
+                }
+                else -> Result.failure(Exception(errors.joinToString("\n")))
+            }
         } catch (e: Exception) {
+            Log.e(TAG, "Unexpected error during Notion export", e)
             Result.failure(e)
         }
     }
