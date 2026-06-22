@@ -43,6 +43,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 private val quickAmounts = listOf("100", "500", "1000", "2000", "5000", "10000")
+private fun TransactionType.toDisplayName(): String = name.lowercase().replaceFirstChar { it.titlecase() }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -162,7 +163,7 @@ fun TransactionDetailScreen(
                     FilterChip(
                         selected = selected,
                         onClick = { viewModel.updateEditField("type", type) },
-                        label = { Text(type.name.lowercase().replaceFirstChar { it.titlecase() }) },
+                        label = { Text(type.toDisplayName()) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = accent.copy(alpha = 0.15f),
                             selectedLabelColor = accent

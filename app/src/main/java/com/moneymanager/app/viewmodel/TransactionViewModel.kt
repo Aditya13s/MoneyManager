@@ -101,7 +101,7 @@ class TransactionViewModel @Inject constructor(
         _listState.update { it.copy(searchQuery = query) }
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            delay(220)
+            delay(250)
             applyFilters()
         }
     }

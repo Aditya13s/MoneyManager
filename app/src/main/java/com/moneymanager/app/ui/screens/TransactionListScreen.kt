@@ -107,7 +107,7 @@ fun TransactionListScreen(
                         .fillMaxSize()
                         .semantics {
                             liveRegion = LiveRegionMode.Polite
-                            contentDescription = "No transactions found. Use Add to create your first entry."
+                            contentDescription = "No transactions found. Tap the add button to create your first entry."
                         },
                     contentAlignment = Alignment.Center
                 ) {
