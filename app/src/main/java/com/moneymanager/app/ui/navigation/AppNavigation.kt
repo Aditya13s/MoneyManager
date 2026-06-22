@@ -18,8 +18,8 @@ import com.moneymanager.app.ui.screens.TransactionDetailScreen
 import com.moneymanager.app.ui.screens.TransactionListScreen
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
-    object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard)
-    object TransactionList : Screen("transactions", "Transactions", Icons.Default.List)
+    object Dashboard : Screen("dashboard", "Home", Icons.Default.Dashboard)
+    object TransactionList : Screen("transactions", "Activity", Icons.Default.List)
     object TransactionDetail : Screen("transaction/{id}", "Detail", Icons.Default.List) {
         fun createRoute(id: Long = -1L) = "transaction/$id"
     }

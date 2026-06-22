@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +44,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 private const val HIDDEN_AMOUNT = "••••••"
+private const val LOADING_PLACEHOLDER_COUNT = 3
 
 private fun formatAmount(amount: Double, hidden: Boolean, format: NumberFormat): String =
     if (hidden) HIDDEN_AMOUNT else format.format(amount)
@@ -78,7 +80,10 @@ fun DashboardScreen(
                             contentDescription = null
                         )
                     }
-                    IconButton(onClick = { csvImportLauncher.launch("*/*") }) {
+                    IconButton(
+                        onClick = { csvImportLauncher.launch("*/*") },
+                        modifier = Modifier.semantics { contentDescription = "Import transactions from CSV" }
+                    ) {
                         Icon(Icons.Default.Upload, contentDescription = "Import CSV")
                     }
                 }
@@ -99,6 +104,14 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
+                QuickActionsCard(
+                    onQuickAdd = { navController.navigate(Screen.TransactionDetail.createRoute(-1L)) },
+                    onSeeAll = { navController.navigate(Screen.TransactionList.route) },
+                    onExport = { navController.navigate(Screen.Export.route) }
+                )
+            }
+
+            item {
                 if (state.isSyncing) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
@@ -107,6 +120,12 @@ fun DashboardScreen(
                     Text(state.syncMessage, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.secondary)
                     Spacer(Modifier.height(8.dp))
+                }
+            }
+
+            if (state.isLoading) {
+                items(LOADING_PLACEHOLDER_COUNT) {
+                    LoadingTransactionCard()
                 }
             }
 
@@ -158,7 +177,7 @@ fun DashboardScreen(
                     }
                 }
             } else {
-                items(state.recentTransactions) { transaction ->
+                items(state.recentTransactions, key = { it.id }) { transaction ->
                     TransactionCard(
                         transaction = transaction,
                         currencyFormat = currencyFormat,
@@ -172,12 +191,73 @@ fun DashboardScreen(
 }
 
 @Composable
+private fun QuickActionsCard(
+    onQuickAdd: () -> Unit,
+    onSeeAll: () -> Unit,
+    onExport: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Quick Actions", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(
+                "Add a transaction in seconds",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilledTonalButton(
+                    onClick = onQuickAdd,
+                    modifier = Modifier.weight(1f).minimumInteractiveComponentSize()
+                ) {
+                    Text("Add Transaction")
+                }
+                OutlinedButton(
+                    onClick = onSeeAll,
+                    modifier = Modifier.weight(1f).minimumInteractiveComponentSize()
+                ) {
+                    Text("All Activity")
+                }
+            }
+            OutlinedButton(
+                onClick = onExport,
+                modifier = Modifier.fillMaxWidth().minimumInteractiveComponentSize()
+            ) {
+                Text("Export")
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingTransactionCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+        )
+    }
+}
+
+@Composable
 fun SummaryCard(income: Double, expense: Double, remaining: Double, format: NumberFormat, amountsHidden: Boolean = false) {
     val isPositive = remaining >= 0
     val gradientColors = if (isPositive)
-        listOf(Color(0xFF5C35CC), Color(0xFF7C4DFF))
+        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer)
     else
-        listOf(Color(0xFFB71C1C), Color(0xFFE53935))
+        listOf(ExpenseColor, MaterialTheme.colorScheme.errorContainer)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -204,10 +284,11 @@ fun SummaryCard(income: Double, expense: Double, remaining: Double, format: Numb
                     color = Color.White
                 )
                 Spacer(Modifier.height(20.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     // Income pill
                     Row(
                         modifier = Modifier
+                            .weight(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color.White.copy(alpha = 0.15f))
                             .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -223,6 +304,7 @@ fun SummaryCard(income: Double, expense: Double, remaining: Double, format: Numb
                     // Expense pill
                     Row(
                         modifier = Modifier
+                            .weight(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color.White.copy(alpha = 0.15f))
                             .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -250,12 +332,13 @@ fun MonthlyCard(monthlyIncome: Double, monthlyExpense: Double, format: NumberFor
             Text("📅  $monthName", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                SummaryItem("Income", formatAmount(monthlyIncome, amountsHidden, format), IncomeColor)
-                SummaryItem("Expenses", formatAmount(monthlyExpense, amountsHidden, format), ExpenseColor)
+                SummaryItem("Income", formatAmount(monthlyIncome, amountsHidden, format), IncomeColor, Modifier.weight(1f))
+                SummaryItem("Expenses", formatAmount(monthlyExpense, amountsHidden, format), ExpenseColor, Modifier.weight(1f))
                 SummaryItem(
                     "Saved",
                     formatAmount(monthlyIncome - monthlyExpense, amountsHidden, format),
-                    if (amountsHidden || monthlyIncome >= monthlyExpense) IncomeColor else ExpenseColor
+                    if (amountsHidden || monthlyIncome >= monthlyExpense) IncomeColor else ExpenseColor,
+                    Modifier.weight(1f)
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -285,10 +368,15 @@ fun MonthlyCard(monthlyIncome: Double, monthlyExpense: Double, format: NumberFor
 }
 
 @Composable
-fun SummaryItem(label: String, value: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+fun SummaryItem(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, color = color, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodySmall,
+            color = color,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -348,9 +436,15 @@ fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amou
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     val amountColor = if (transaction.type == TransactionType.EXPENSE) ExpenseColor else IncomeColor
     val sign = if (transaction.type == TransactionType.EXPENSE) "-" else "+"
+    val amountSummary = if (amountsHidden) "$sign $HIDDEN_AMOUNT" else "$sign${currencyFormat.format(transaction.amount)}"
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                role = Role.Button
+                contentDescription = "${transaction.title}, ${transaction.category.name.toCategoryTitle()}, $amountSummary, ${if (transaction.type == TransactionType.EXPENSE) "expense" else "income"}"
+            },
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -379,8 +473,7 @@ fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amou
                 )
             }
             Text(
-                text = if (amountsHidden) "$sign $HIDDEN_AMOUNT"
-                       else "$sign${currencyFormat.format(transaction.amount)}",
+                text = amountSummary,
                 color = amountColor,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp
@@ -388,4 +481,3 @@ fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amou
         }
     }
 }
-

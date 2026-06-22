@@ -9,8 +9,12 @@ import com.moneymanager.app.data.repository.TransactionRepository
 import com.moneymanager.app.data.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val SEARCH_DEBOUNCE_DELAY_MILLIS = 250L
 
 data class TransactionListState(
     val transactions: List<Transaction> = emptyList(),
@@ -50,6 +54,7 @@ class TransactionViewModel @Inject constructor(
     val editState: StateFlow<TransactionEditState> = _editState.asStateFlow()
 
     private val _allTransactions = MutableStateFlow<List<Transaction>>(emptyList())
+    private var searchJob: Job? = null
 
     init {
         loadTransactions()
@@ -96,7 +101,11 @@ class TransactionViewModel @Inject constructor(
 
     fun setSearchQuery(query: String) {
         _listState.update { it.copy(searchQuery = query) }
-        applyFilters()
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_DELAY_MILLIS)
+            applyFilters()
+        }
     }
 
     fun setTypeFilter(type: TransactionType?) {

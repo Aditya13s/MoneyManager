@@ -22,6 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -39,6 +43,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 private val quickAmounts = listOf("100", "500", "1000", "2000", "5000", "10000")
+private fun TransactionType.toDisplayName(): String = name.lowercase().replaceFirstChar { it.titlecase() }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -131,7 +136,11 @@ fun TransactionDetailScreen(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer
                     ),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.semantics {
+                        liveRegion = LiveRegionMode.Assertive
+                        contentDescription = "Validation error. Please fill required fields title and amount."
+                    }
                 ) {
                     Text(
                         "Please fill in all required fields (Title & Amount)",
@@ -154,7 +163,7 @@ fun TransactionDetailScreen(
                     FilterChip(
                         selected = selected,
                         onClick = { viewModel.updateEditField("type", type) },
-                        label = { Text(type.name) },
+                        label = { Text(type.toDisplayName()) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = accent.copy(alpha = 0.15f),
                             selectedLabelColor = accent
@@ -163,7 +172,8 @@ fun TransactionDetailScreen(
                             enabled = true,
                             selected = selected,
                             selectedBorderColor = accent
-                        )
+                        ),
+                        modifier = Modifier.minimumInteractiveComponentSize()
                     )
                 }
             }
@@ -199,7 +209,8 @@ fun TransactionDetailScreen(
                 quickAmounts.forEach { preset ->
                     SuggestionChip(
                         onClick = { viewModel.updateEditField("amount", preset) },
-                        label = { Text("₹$preset") }
+                        label = { Text("₹$preset") },
+                        modifier = Modifier.minimumInteractiveComponentSize()
                     )
                 }
             }
@@ -335,4 +346,3 @@ fun TransactionDetailScreen(
         }
     }
 }
-

@@ -47,9 +47,9 @@ fun ExportScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Export Data") },
+                title = { Text("Export") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navController.popBackStack() }, modifier = Modifier.minimumInteractiveComponentSize()) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
                 }
