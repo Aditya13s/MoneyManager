@@ -26,7 +26,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -216,13 +215,13 @@ private fun QuickActionsCard(
                     onClick = onQuickAdd,
                     modifier = Modifier.weight(1f).minimumInteractiveComponentSize()
                 ) {
-                    Text("Quick Add")
+                    Text("Add Transaction")
                 }
                 OutlinedButton(
                     onClick = onSeeAll,
                     modifier = Modifier.weight(1f).minimumInteractiveComponentSize()
                 ) {
-                    Text("See all")
+                    Text("All Activity")
                 }
             }
             OutlinedButton(
@@ -375,9 +374,7 @@ fun SummaryItem(label: String, value: String, color: Color, modifier: Modifier =
             value,
             style = MaterialTheme.typography.bodySmall,
             color = color,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -438,13 +435,14 @@ fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amou
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     val amountColor = if (transaction.type == TransactionType.EXPENSE) ExpenseColor else IncomeColor
     val sign = if (transaction.type == TransactionType.EXPENSE) "-" else "+"
+    val amountSummary = if (amountsHidden) "$sign $HIDDEN_AMOUNT" else "$sign${currencyFormat.format(transaction.amount)}"
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .semantics {
                 role = Role.Button
-                contentDescription = "${transaction.title}, ${transaction.category.name.toCategoryTitle()}, ${if (transaction.type == TransactionType.EXPENSE) "expense" else "income"}"
+                contentDescription = "${transaction.title}, ${transaction.category.name.toCategoryTitle()}, $amountSummary, ${if (transaction.type == TransactionType.EXPENSE) "expense" else "income"}, swipe left in activity to delete"
             },
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),
@@ -474,8 +472,7 @@ fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amou
                 )
             }
             Text(
-                text = if (amountsHidden) "$sign $HIDDEN_AMOUNT"
-                       else "$sign${currencyFormat.format(transaction.amount)}",
+                text = amountSummary,
                 color = amountColor,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp

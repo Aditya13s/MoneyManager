@@ -13,7 +13,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
@@ -137,6 +139,14 @@ fun TransactionListScreen(
                             )
                         }
                         SwipeToDismissBox(
+                            modifier = Modifier.semantics {
+                                customActions = listOf(
+                                    CustomAccessibilityAction("Delete transaction") {
+                                        showDeleteDialog = true
+                                        true
+                                    }
+                                )
+                            },
                             state = rememberSwipeToDismissBoxState(
                                 confirmValueChange = { value ->
                                     if (value == SwipeToDismissBoxValue.EndToStart) {
