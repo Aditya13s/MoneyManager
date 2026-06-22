@@ -47,9 +47,9 @@ fun ExportScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Export Data") },
+                title = { Text("Export") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navController.popBackStack() }, modifier = Modifier.minimumInteractiveComponentSize()) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
                 }
@@ -91,7 +91,7 @@ fun ExportScreen(
                     )
                     Button(
                         onClick = { viewModel.exportToCsv() },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().minimumInteractiveComponentSize()
                     ) {
                         Text("Export to CSV")
                     }
@@ -197,7 +197,7 @@ fun ExportScreen(
                                 viewModel.saveNotionCredentials(notionApiKey, notionDatabaseId)
                                 credentialsSaved = true
                             },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).minimumInteractiveComponentSize(),
                             enabled = notionApiKey.isNotBlank() && notionDatabaseId.isNotBlank()
                         ) {
                             Text("Save")
@@ -208,7 +208,7 @@ fun ExportScreen(
                                 credentialsSaved = true
                                 viewModel.exportToNotion(notionApiKey, notionDatabaseId)
                             },
-                            modifier = Modifier.weight(2f),
+                            modifier = Modifier.weight(2f).minimumInteractiveComponentSize(),
                             enabled = notionApiKey.isNotBlank() && notionDatabaseId.isNotBlank()
                         ) {
                             Text("Export to Notion")

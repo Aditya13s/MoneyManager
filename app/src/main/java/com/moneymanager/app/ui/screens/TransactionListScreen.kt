@@ -14,6 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -56,7 +58,7 @@ fun TransactionListScreen(
             FloatingActionButton(onClick = {
                 viewModel.prepareNewTransaction()
                 navController.navigate(Screen.TransactionDetail.createRoute(-1L))
-            }) {
+            }, modifier = Modifier.minimumInteractiveComponentSize()) {
                 Icon(Icons.Default.Add, "Add")
             }
         }
@@ -78,17 +80,20 @@ fun TransactionListScreen(
                 FilterChip(
                     selected = state.selectedType == null,
                     onClick = { viewModel.setTypeFilter(null) },
-                    label = { Text("All") }
+                    label = { Text("All") },
+                    modifier = Modifier.minimumInteractiveComponentSize()
                 )
                 FilterChip(
                     selected = state.selectedType == TransactionType.INCOME,
                     onClick = { viewModel.setTypeFilter(TransactionType.INCOME) },
-                    label = { Text("Income") }
+                    label = { Text("Income") },
+                    modifier = Modifier.minimumInteractiveComponentSize()
                 )
                 FilterChip(
                     selected = state.selectedType == TransactionType.EXPENSE,
                     onClick = { viewModel.setTypeFilter(TransactionType.EXPENSE) },
-                    label = { Text("Expense") }
+                    label = { Text("Expense") },
+                    modifier = Modifier.minimumInteractiveComponentSize()
                 )
             }
 
@@ -97,7 +102,15 @@ fun TransactionListScreen(
                     CircularProgressIndicator()
                 }
             } else if (state.transactions.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .semantics {
+                            liveRegion = LiveRegionMode.Polite
+                            contentDescription = "No transactions found. Use Add to create your first entry."
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
                     Text("No transactions found", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
@@ -134,7 +147,10 @@ fun TransactionListScreen(
                             ),
                             backgroundContent = {
                                 Box(
-                                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp)
+                                        .semantics { contentDescription = "Swipe left to delete transaction" },
                                     contentAlignment = Alignment.CenterEnd
                                 ) {
                                     Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)

@@ -12,8 +12,8 @@ val PurpleGrey40 = Color(0xFF455A64)
 val Teal40 = Color(0xFF00838F)
 
 // Semantic colours
-val IncomeColor  = Color(0xFF00C853)   // vivid green
-val ExpenseColor = Color(0xFFFF1744)   // vivid red
+val IncomeColor  = Color(0xFF2E7D32)   // high-contrast green
+val ExpenseColor = Color(0xFFC62828)   // high-contrast red
 
 // Legacy / accent
 val SalaryColor  = Color(0xFF2979FF)
