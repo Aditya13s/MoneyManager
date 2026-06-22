@@ -442,7 +442,7 @@ fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amou
             .fillMaxWidth()
             .semantics {
                 role = Role.Button
-                contentDescription = "${transaction.title}, ${transaction.category.name.toCategoryTitle()}, $amountSummary, ${if (transaction.type == TransactionType.EXPENSE) "expense" else "income"}, swipe left in activity to delete"
+                contentDescription = "${transaction.title}, ${transaction.category.name.toCategoryTitle()}, $amountSummary, ${if (transaction.type == TransactionType.EXPENSE) "expense" else "income"}"
             },
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),

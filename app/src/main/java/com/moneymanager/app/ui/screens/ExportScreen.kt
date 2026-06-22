@@ -91,7 +91,7 @@ fun ExportScreen(
                     )
                     Button(
                         onClick = { viewModel.exportToCsv() },
-                        modifier = Modifier.fillMaxWidth().minimumInteractiveComponentSize()
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Export to CSV")
                     }
@@ -197,7 +197,7 @@ fun ExportScreen(
                                 viewModel.saveNotionCredentials(notionApiKey, notionDatabaseId)
                                 credentialsSaved = true
                             },
-                            modifier = Modifier.weight(1f).minimumInteractiveComponentSize(),
+                            modifier = Modifier.weight(1f),
                             enabled = notionApiKey.isNotBlank() && notionDatabaseId.isNotBlank()
                         ) {
                             Text("Save")
@@ -208,7 +208,7 @@ fun ExportScreen(
                                 credentialsSaved = true
                                 viewModel.exportToNotion(notionApiKey, notionDatabaseId)
                             },
-                            modifier = Modifier.weight(2f).minimumInteractiveComponentSize(),
+                            modifier = Modifier.weight(2f),
                             enabled = notionApiKey.isNotBlank() && notionDatabaseId.isNotBlank()
                         ) {
                             Text("Export to Notion")
