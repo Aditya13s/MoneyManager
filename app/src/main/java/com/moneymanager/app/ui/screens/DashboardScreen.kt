@@ -44,6 +44,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 private const val HIDDEN_AMOUNT = "••••••"
+private const val LOADING_PLACEHOLDER_COUNT = 3
 
 private fun formatAmount(amount: Double, hidden: Boolean, format: NumberFormat): String =
     if (hidden) HIDDEN_AMOUNT else format.format(amount)
@@ -123,7 +124,7 @@ fun DashboardScreen(
             }
 
             if (state.isLoading) {
-                items(3) {
+                items(LOADING_PLACEHOLDER_COUNT) {
                     LoadingTransactionCard()
                 }
             }
