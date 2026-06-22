@@ -201,7 +201,7 @@ private fun QuickActionsCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Quick actions", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text("Quick Actions", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text(
                 "Add a transaction in seconds",
                 style = MaterialTheme.typography.bodySmall,
@@ -370,7 +370,13 @@ fun MonthlyCard(monthlyIncome: Double, monthlyExpense: Double, format: NumberFor
 fun SummaryItem(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, color = color, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodySmall,
+            color = color,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
+        )
     }
 }
 

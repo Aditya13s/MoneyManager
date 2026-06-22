@@ -14,6 +14,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private const val SEARCH_DEBOUNCE_MILLIS = 250L
+
 data class TransactionListState(
     val transactions: List<Transaction> = emptyList(),
     val isLoading: Boolean = false,
@@ -101,7 +103,7 @@ class TransactionViewModel @Inject constructor(
         _listState.update { it.copy(searchQuery = query) }
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            delay(250)
+            delay(SEARCH_DEBOUNCE_MILLIS)
             applyFilters()
         }
     }
