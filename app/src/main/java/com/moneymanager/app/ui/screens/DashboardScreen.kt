@@ -1,12 +1,12 @@
 package com.moneymanager.app.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -20,7 +20,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -174,34 +173,39 @@ fun DashboardScreen(
 @Composable
 fun SummaryCard(income: Double, expense: Double, remaining: Double, format: NumberFormat, amountsHidden: Boolean = false) {
     val isPositive = remaining >= 0
-    val gradientColors = if (isPositive)
-        listOf(Color(0xFF5C35CC), Color(0xFF7C4DFF))
+    val cardColor = if (isPositive)
+        MaterialTheme.colorScheme.primaryContainer
     else
-        listOf(Color(0xFFB71C1C), Color(0xFFE53935))
+        MaterialTheme.colorScheme.errorContainer
+    val cardTextColor = if (isPositive)
+        MaterialTheme.colorScheme.onPrimaryContainer
+    else
+        MaterialTheme.colorScheme.onErrorContainer
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Brush.linearGradient(gradientColors))
                 .padding(20.dp)
         ) {
             Column {
                 Text(
                     "Total Balance",
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color.White.copy(alpha = 0.8f)
+                    color = cardTextColor.copy(alpha = 0.8f)
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = formatAmount(remaining, amountsHidden, format),
                     fontSize = 36.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
+                    color = cardTextColor
                 )
                 Spacer(Modifier.height(20.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -209,30 +213,30 @@ fun SummaryCard(income: Double, expense: Double, remaining: Double, format: Numb
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.15f))
+                            .background(cardTextColor.copy(alpha = 0.08f))
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(Icons.Default.TrendingUp, null, tint = Color(0xFF69FF47), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.TrendingUp, null, tint = IncomeColor, modifier = Modifier.size(18.dp))
                         Column {
-                            Text("Income", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f))
-                            Text(formatAmount(income, amountsHidden, format), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Income", style = MaterialTheme.typography.labelSmall, color = cardTextColor.copy(alpha = 0.8f))
+                            Text(formatAmount(income, amountsHidden, format), color = cardTextColor, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                     // Expense pill
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.15f))
+                            .background(cardTextColor.copy(alpha = 0.08f))
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(Icons.Default.TrendingDown, null, tint = Color(0xFFFF5252), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.TrendingDown, null, tint = ExpenseColor, modifier = Modifier.size(18.dp))
                         Column {
-                            Text("Expenses", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f))
-                            Text(formatAmount(expense, amountsHidden, format), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Expenses", style = MaterialTheme.typography.labelSmall, color = cardTextColor.copy(alpha = 0.8f))
+                            Text(formatAmount(expense, amountsHidden, format), color = cardTextColor, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                 }
@@ -244,8 +248,12 @@ fun SummaryCard(income: Double, expense: Double, remaining: Double, format: Numb
 @Composable
 fun MonthlyCard(monthlyIncome: Double, monthlyExpense: Double, format: NumberFormat, amountsHidden: Boolean = false) {
     val monthName = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date())
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("📅  $monthName", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
@@ -294,8 +302,12 @@ fun SummaryItem(label: String, value: String, color: Color) {
 
 @Composable
 fun CategoryBreakdownCard(breakdown: Map<String, Double>, format: NumberFormat, amountsHidden: Boolean = false) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("📊  Spending by Category", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
@@ -312,7 +324,7 @@ fun CategoryBreakdownCard(breakdown: Map<String, Double>, format: NumberFormat, 
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
-                                .clip(CircleShape)
+                                .clip(RoundedCornerShape(8.dp))
                                 .background(category.badgeColor().copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
                         ) {
@@ -353,7 +365,8 @@ fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amou
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
@@ -363,7 +376,7 @@ fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amou
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(CircleShape)
+                    .clip(RoundedCornerShape(10.dp))
                     .background(transaction.category.badgeColor().copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -388,4 +401,3 @@ fun TransactionCard(transaction: Transaction, currencyFormat: NumberFormat, amou
         }
     }
 }
-
