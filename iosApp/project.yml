@@ -1,0 +1,16 @@
+name: MoneyManageriOS
+options:
+  deploymentTarget:
+    iOS: 15.0
+targets:
+  MoneyManageriOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: MoneyManageriOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.moneymanager.ios
+        SWIFT_VERSION: 5.0
+    dependencies:
+      - framework: ../shared/build/XCFrameworks/debug/shared.xcframework

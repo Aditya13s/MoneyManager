@@ -1,0 +1,198 @@
+package com.moneymanager.shared.ui.screens
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PasswordVisualTransformation
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+import com.moneymanager.shared.viewmodel.TransactionViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ExportScreen(
+    viewModel: TransactionViewModel,
+    onBack: () -> Unit,
+    onExportCsv: (String) -> Unit
+) {
+    val state by viewModel.listState.collectAsState()
+    var notionApiKey by remember { mutableStateOf(state.savedNotionApiKey) }
+    var notionDatabaseId by remember { mutableStateOf(state.savedNotionDatabaseId) }
+    var apiKeyVisible by remember { mutableStateOf(false) }
+    var instructionsExpanded by remember { mutableStateOf(false) }
+    var credentialsSaved by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Export Data") },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier.padding(padding).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            if (state.exportMessage.isNotEmpty()) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (state.isExportError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        state.exportMessage,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (state.isExportError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("CSV Export", style = MaterialTheme.typography.titleMedium)
+                    Text("Export all transactions to a CSV file stored on your device.", style = MaterialTheme.typography.bodySmall)
+                    Button(
+                        onClick = { onExportCsv(viewModel.buildCsvContent()) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Export to CSV") }
+                }
+            }
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Notion Export", style = MaterialTheme.typography.titleMedium)
+                    Text("Export transactions to a Notion database.", style = MaterialTheme.typography.bodySmall)
+
+                    TextButton(onClick = { instructionsExpanded = !instructionsExpanded }, contentPadding = PaddingValues(0.dp)) {
+                        Text(if (instructionsExpanded) "Hide setup instructions" else "Show setup instructions")
+                        Spacer(Modifier.width(4.dp))
+                        Icon(if (instructionsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, contentDescription = null)
+                    }
+
+                    if (instructionsExpanded) {
+                        Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = "1. Go to https://www.notion.so/my-integrations and click \"New integration\".\n" +
+                                    "2. Give it a name (e.g. MoneyManager), select your workspace, and click Submit.\n" +
+                                    "3. Copy the \"Internal Integration Token\" — this is your API Key.\n" +
+                                    "4. In Notion, create a new database with these columns: Name, Amount, Type, Category, Date.\n" +
+                                    "5. Add your integration to the database Connections.\n" +
+                                    "6. Copy the database ID from the URL.",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+                    }
+
+                    HorizontalDivider()
+                    Text("Enter your credentials below:", style = MaterialTheme.typography.labelMedium)
+
+                    OutlinedTextField(
+                        value = notionApiKey,
+                        onValueChange = {
+                            notionApiKey = it
+                            credentialsSaved = false
+                        },
+                        label = { Text("Notion API Key") },
+                        placeholder = { Text("secret_xxxxxxxxxxxx") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        trailingIcon = {
+                            IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                                Icon(
+                                    imageVector = if (apiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (apiKeyVisible) "Hide API key" else "Show API key"
+                                )
+                            }
+                        },
+                        supportingText = { Text("Found at notion.so/my-integrations") }
+                    )
+
+                    OutlinedTextField(
+                        value = notionDatabaseId,
+                        onValueChange = {
+                            notionDatabaseId = it
+                            credentialsSaved = false
+                        },
+                        label = { Text("Database ID") },
+                        placeholder = { Text("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        supportingText = { Text("32-character ID from your database URL") }
+                    )
+
+                    if (credentialsSaved) {
+                        Text("✓ Credentials saved", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.saveNotionCredentials(notionApiKey, notionDatabaseId)
+                                credentialsSaved = true
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = notionApiKey.isNotBlank() && notionDatabaseId.isNotBlank()
+                        ) { Text("Save") }
+
+                        Button(
+                            onClick = {
+                                viewModel.saveNotionCredentials(notionApiKey, notionDatabaseId)
+                                credentialsSaved = true
+                                viewModel.exportToNotion(notionApiKey, notionDatabaseId)
+                            },
+                            modifier = Modifier.weight(2f),
+                            enabled = notionApiKey.isNotBlank() && notionDatabaseId.isNotBlank()
+                        ) { Text("Export to Notion") }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
