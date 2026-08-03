@@ -57,8 +57,10 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Build shared iOS framework
-        run: ./gradlew :shared:assembleXCFramework
+      - name: Build iOS frameworks
+        run: |
+          ./gradlew :shared:linkDebugFrameworkIosArm64
+          ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
 
       - name: Generate Xcode project
         working-directory: iosApp
