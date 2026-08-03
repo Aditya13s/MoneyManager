@@ -38,8 +38,10 @@ kotlin {
             }
         }
 
-        desktopMain.dependencies {
-            implementation(libs.ktor.client.cio)
+        val desktopMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.cio)
+            }
         }
 
         commonTest.dependencies {
