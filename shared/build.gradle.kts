@@ -32,10 +32,8 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
         }
 
-        val iosMain by getting {
-            dependencies {
-                implementation(libs.ktor.client.darwin)
-            }
+        maybeCreate("iosMain").dependencies {
+            implementation(libs.ktor.client.darwin)
         }
 
         val desktopMain by getting {
