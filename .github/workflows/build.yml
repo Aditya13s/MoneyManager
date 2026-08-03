@@ -54,25 +54,31 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # Build the iOS simulator/shared Kotlin module first
-      - name: Build iOS simulator framework
-        run: ./gradlew :shared:compileKotlinIosSimulatorArm64
+      - name: Install XcodeGen
+        run: brew install xcodegen
 
-      # If your project has an Xcode project, this is where the IPA build happens.
-      # Replace these values with your actual Xcode workspace and scheme.
-      - name: Build iPhone IPA
+      - name: Build shared iOS framework
+        run: ./gradlew :shared:assembleXCFramework
+
+      - name: Generate Xcode project
+        working-directory: iosApp
+        run: xcodegen generate
+
+      - name: Build archive
         run: |
           set -e
           mkdir -p build/ios
 
           xcodebuild \
-            -workspace "iosApp/iosApp.xcworkspace" \
-            -scheme "iosApp" \
+            -project "iosApp/MoneyManageriOS.xcodeproj" \
+            -scheme "MoneyManageriOS" \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath "$PWD/build/ios/iosApp.xcarchive" \
+            -archivePath "$PWD/build/ios/MoneyManageriOS.xcarchive" \
             clean archive
 
+      - name: Export IPA
+        run: |
           cat > ExportOptions.plist <<'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -90,7 +96,7 @@ jobs:
 
           xcodebuild \
             -exportArchive \
-            -archivePath "$PWD/build/ios/iosApp.xcarchive" \
+            -archivePath "$PWD/build/ios/MoneyManageriOS.xcarchive" \
             -exportPath "$PWD/build/ios/export" \
             -exportOptionsPlist ExportOptions.plist
 
