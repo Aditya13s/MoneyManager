@@ -210,8 +210,8 @@ class TransactionViewModel @Inject constructor(
     fun exportToCsv() {
         viewModelScope.launch {
             try {
-                val file = repository.exportToCsv()
-                _listState.update { it.copy(exportMessage = "Exported to ${file.absolutePath}") }
+                val location = repository.exportToCsv()
+                _listState.update { it.copy(exportMessage = "Backup saved to $location") }
             } catch (e: Exception) {
                 _listState.update { it.copy(exportMessage = "Export failed: ${e.message}") }
             }

@@ -1,7 +1,11 @@
 package com.moneymanager.app.data.repository
 
 import android.content.Context
+import android.content.ContentValues
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import com.google.gson.JsonObject
 import com.moneymanager.app.data.db.TransactionDao
@@ -201,23 +205,40 @@ class TransactionRepository @Inject constructor(
         return result
     }
 
-    suspend fun exportToCsv(): File {
+    suspend fun exportToCsv(): String {
         val transactions = transactionDao.getAllTransactions().first()
 
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val fileName = "transactions_${System.currentTimeMillis()}.csv"
-        val file = File(context.getExternalFilesDir(null), fileName)
 
-        FileWriter(file).use { writer ->
-            writer.write("ID,Title,Amount,Type,Category,Account,Location,Date,Note\n")
+        val csvContent = buildString {
+            append("ID,Title,Amount,Type,Category,Account,Location,Date,Note\n")
             transactions.forEach { t ->
-                writer.write(
+                append(
                     "${t.id},\"${t.title}\",${t.amount},${t.type},${t.category}," +
-                    "\"${t.account}\",\"${t.location}\",\"${dateFormat.format(Date(t.date))}\",\"${t.note}\"\n"
+                        "\"${t.account}\",\"${t.location}\",\"${dateFormat.format(Date(t.date))}\",\"${t.note}\"\n"
                 )
             }
         }
-        return file
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                put(MediaStore.Downloads.MIME_TYPE, "text/csv")
+                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: throw IllegalStateException("Unable to create CSV file in Downloads")
+            context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(csvContent) }
+                ?: throw IllegalStateException("Unable to write CSV file")
+            return "Downloads/$fileName"
+        }
+
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val targetDir = if (downloadsDir?.exists() == true || downloadsDir?.mkdirs() == true) downloadsDir else context.getExternalFilesDir(null)
+        val file = File(targetDir, fileName)
+        FileWriter(file).use { it.write(csvContent) }
+        return file.absolutePath
     }
 
     suspend fun exportToNotion(apiKey: String, databaseId: String): Result<Int> {

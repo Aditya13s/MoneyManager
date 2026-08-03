@@ -2,26 +2,26 @@ package com.moneymanager.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Primary palette – deep indigo / violet
-val Purple80 = Color(0xFFCDB4FF)
-val PurpleGrey80 = Color(0xFFB0BEC5)
-val Teal80 = Color(0xFF80DEEA)
+// Primary palette – minimal slate/blue
+val Purple80 = Color(0xFFB9D3FF)
+val PurpleGrey80 = Color(0xFFC0C8D6)
+val Teal80 = Color(0xFF9AD9CF)
 
-val Purple40 = Color(0xFF5C35CC)
-val PurpleGrey40 = Color(0xFF455A64)
-val Teal40 = Color(0xFF00838F)
+val Purple40 = Color(0xFF1F4A7C)
+val PurpleGrey40 = Color(0xFF465364)
+val Teal40 = Color(0xFF2E7D73)
 
 // Semantic colours
-val IncomeColor  = Color(0xFF00C853)   // vivid green
-val ExpenseColor = Color(0xFFFF1744)   // vivid red
+val IncomeColor  = Color(0xFF1F8A5B)
+val ExpenseColor = Color(0xFFD64545)
 
 // Legacy / accent
-val SalaryColor  = Color(0xFF2979FF)
-val SavingsColor = Color(0xFFD500F9)
+val SalaryColor  = Color(0xFF2C6FB2)
+val SavingsColor = Color(0xFF6F5AA8)
 
 // Card / surface helpers
-val CardBackground  = Color(0xFFF3F0FF)
-val SurfaceVariant  = Color(0xFFEDE7F6)
+val CardBackground  = Color(0xFFF7F9FC)
+val SurfaceVariant  = Color(0xFFEAF0F6)
 
 // Category badge colours
 val CategoryFoodColor          = Color(0xFFFF6D00)

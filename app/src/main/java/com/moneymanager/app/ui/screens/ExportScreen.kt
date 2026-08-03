@@ -86,7 +86,7 @@ fun ExportScreen(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("CSV Export", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Export all transactions to a CSV file stored on your device.",
+                        "Export all transactions to a CSV backup in Downloads so it stays available after reinstall.",
                         style = MaterialTheme.typography.bodySmall
                     )
                     Button(
