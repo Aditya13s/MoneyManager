@@ -18,9 +18,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -71,12 +70,12 @@ fun DashboardScreen(
                 actions = {
                     IconButton(onClick = { viewModel.toggleAmountsHidden() }) {
                         Icon(
-                            imageVector = if (state.amountsHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            imageVector = if (state.amountsHidden) Icons.Default.List else Icons.Default.Share,
                             contentDescription = if (state.amountsHidden) "Show amounts" else "Hide amounts"
                         )
                     }
                     IconButton(onClick = onImportCsv) {
-                        Icon(Icons.Default.Upload, contentDescription = "Import CSV")
+                        Icon(Icons.Default.Share, contentDescription = "Import CSV")
                     }
                 }
             )

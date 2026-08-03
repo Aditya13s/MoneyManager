@@ -13,7 +13,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 
 data class DashboardState(
@@ -101,19 +103,23 @@ class DashboardViewModel(
                     _state.update { it.copy(isSyncing = false, syncMessage = "Import failed: ${e.message}") }
                 }
         }
+    }
 
-        fun setImportError(message: String) {
-                _state.update { it.copy(isSyncing = false, syncMessage = "Import failed: $message") }
-        }
+    fun setImportError(message: String) {
+        _state.update { it.copy(isSyncing = false, syncMessage = "Import failed: $message") }
     }
 
     private fun monthRangeNow(): Pair<Long, Long> {
-        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-        val start = now.copy(dayOfMonth = 1, hour = 0, minute = 0, second = 0, nanosecond = 0)
-        val end = now.copy(dayOfMonth = now.date.lengthOfMonth(), hour = 23, minute = 59, second = 59, nanosecond = 999_000_000)
-        return start.toEpochMillis() to end.toEpochMillis()
+        val timeZone = TimeZone.currentSystemDefault()
+        val nowDate = Clock.System.now().toLocalDateTime(timeZone).date
+        val startOfMonth = LocalDate(nowDate.year, nowDate.monthNumber, 1)
+        val nextMonthStart = if (nowDate.monthNumber == 12) {
+            LocalDate(nowDate.year + 1, 1, 1)
+        } else {
+            LocalDate(nowDate.year, nowDate.monthNumber + 1, 1)
+        }
+        val startMillis = startOfMonth.atStartOfDayIn(timeZone).toEpochMilliseconds()
+        val endMillis = nextMonthStart.atStartOfDayIn(timeZone).toEpochMilliseconds() - 1L
+        return startMillis to endMillis
     }
 }
-
-private fun kotlinx.datetime.LocalDateTime.toEpochMillis(): Long =
-    this.toInstant(kotlinx.datetime.TimeZone.currentSystemDefault()).toEpochMilliseconds()
