@@ -57,15 +57,18 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      # Build iOS frameworks used by the Xcode project
       - name: Build iOS frameworks
         run: |
           ./gradlew :shared:linkDebugFrameworkIosArm64
           ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
 
+      # Generate the Xcode project from iosApp/project.yml
       - name: Generate Xcode project
         working-directory: iosApp
         run: xcodegen generate
 
+      # Archive the iOS app
       - name: Build archive
         run: |
           set -e
@@ -79,6 +82,7 @@ jobs:
             -archivePath "$PWD/build/ios/MoneyManageriOS.xcarchive" \
             clean archive
 
+      # Export IPA for sideloading
       - name: Export IPA
         run: |
           cat > ExportOptions.plist <<'EOF'
